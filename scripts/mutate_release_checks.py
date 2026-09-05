@@ -76,6 +76,11 @@ MUTATIONS = [
                          "        shutil.rmtree(cached, ignore_errors=True)"),
      "test_the_emitted_tree_carries_no_build_artefacts"),
 
+    ("a lock on shipped behaviour silently falls out of the release", BUILD,
+     lambda s: s.replace('    "evidence", "scout", "retrieval", "materials", "experiment", "operations",',
+                         '    "scout", "retrieval", "materials", "experiment", "operations",  # MUTANT'),
+     "test_the_locks_on_shipped_behaviour_actually_ship"),
+
     # -- the release files ------------------------------------------------
     ("a runtime dependency appears in the packaging", PYPROJECT,
      lambda s: s.replace("dependencies = []", 'dependencies = ["numpy>=1.24"]'),

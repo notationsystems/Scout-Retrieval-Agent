@@ -227,6 +227,50 @@ def test_a_missing_declared_package_is_refused():
         assert "not in this tree" in str(caught.value)
 
 
+#: Test files that MUST reach the release, because they are the locks on
+#: behaviour the distribution ships. Declared, not inferred: there is no
+#: structural signal that separates "this file is about a shipped
+#: package" from "this file merely touches one", and guessing intent
+#: from an import list would be the wrong kind of inference.
+MUST_SHIP = (
+    "test_numerics.py",              # the published correlation and variance
+    "test_evidence_admission.py",    # the admission gate
+    "test_replicate_join.py",        # the pairing recovery
+    "test_evidence_identity.py",     # content-addressed identity
+)
+
+#: Deliberately NOT here: the chemistry gate suites. The gate itself
+#: lives in `structures/`, which the distribution does not ship, so
+#: their absence from the release is correct rather than a defect. Named
+#: so a later reader does not "fix" it.
+
+
+def test_the_locks_on_shipped_behaviour_actually_ship():
+    """THE DEFECT THIS EXISTS FOR, and it was found by noticing a count.
+
+    Prover checks were added to `test_numerics.py`. That file imports
+    `evidence` and `materials`, both shipped -- but one import of
+    `execution`, which is not, removed the WHOLE FILE from the release.
+    The locks protecting the published correlation and variance stopped
+    shipping, and nothing failed: the derived suite went from 48 files
+    to 47 and 557 tests to 545. Only the count said so, and only because
+    someone happened to read it.
+
+    A test file is the unit the selection works on, so one stray import
+    costs every lock in that file its place. This names the files whose
+    absence would matter and fails with the reason rather than leaving
+    it to a number nobody is watching."""
+    selected = {path.name for path in release.selected_tests(ROOT)}
+    present = {name for name in MUST_SHIP if (ROOT / "tests" / name).exists()}
+    assert present, "none of the named files exist -- this test guards nothing"
+
+    missing = present - selected
+    assert not missing, (
+        f"locks on shipped behaviour are excluded from the release: "
+        f"{sorted(missing)}. Each covers a package the distribution ships; "
+        f"check whether an import of an unshipped package was added to it.")
+
+
 def test_test_selection_excludes_files_reaching_outside_the_distribution():
     """A test importing `execution` is not a test of this distribution,
     and shipping it would make the released suite fail for a reason the
