@@ -163,12 +163,54 @@ def _parse(stdout: str) -> dict:
     return fields
 
 
+def _signal_reason(returncode: int) -> str:
+    """What a NEGATIVE return code means, in words.
+
+    `subprocess` reports a signal death as -N. The bare number is the
+    least useful thing that could be said about it, and SIGKILL is the
+    worst case: the process is destroyed without running a handler, so
+    stderr is EMPTY and the message reads `host exited -9:` with nothing
+    after the colon. That is indistinguishable, to a reader, from a
+    prover that failed silently for a reason in this repository.
+
+    MEASURED, NOT GUESSED. It happened here: nineteen proving tests
+    errored with exactly that line while a C++ build ran alongside the
+    suite. The prover holds roughly 7 GB and the machine has 15; the
+    kernel killed it. The tests pass with the memory free. Two runs of
+    the same suite reported eleven and nineteen errors -- the count
+    varies with pressure, which is itself the signature.
+    """
+    import signal as _signal
+
+    if returncode >= 0:
+        # Not a signal at all. The caller guards this, but a helper that
+        # answers confidently for an input it can be handed is the kind
+        # of thing that later gets called from somewhere that does not.
+        return f"host exited {returncode}"
+    try:
+        name = _signal.Signals(-returncode).name
+    except (ValueError, TypeError):
+        return f"killed by signal {-returncode}"
+    if name == "SIGKILL":
+        return (
+            "killed by SIGKILL (-9). Nothing in this repository sends that: "
+            "it is almost always the kernel's out-of-memory killer, and the "
+            "prover's peak resident set is several gigabytes. Check free "
+            "memory and whether anything else large was running. Note that "
+            "stderr is empty above BECAUSE of the signal, not because the "
+            "prover said nothing")
+    if name == "SIGSEGV":
+        return "killed by SIGSEGV (-11) -- a fault inside the prover itself"
+    return f"killed by {name} ({returncode})"
+
+
 def _run_host(host: pathlib.Path, args: list[str], timeout: int) -> dict:
     proc = subprocess.run([str(host), *args], capture_output=True, timeout=timeout)
     if proc.returncode != 0:
-        raise ProvedRunError(
-            f"host exited {proc.returncode}: {proc.stderr.decode(errors='replace')[-400:]}"
-        )
+        stderr = proc.stderr.decode(errors="replace")[-400:]
+        detail = (_signal_reason(proc.returncode) if proc.returncode < 0
+                  else f"host exited {proc.returncode}")
+        raise ProvedRunError(f"{detail}: {stderr}")
     return _parse(proc.stdout.decode())
 
 

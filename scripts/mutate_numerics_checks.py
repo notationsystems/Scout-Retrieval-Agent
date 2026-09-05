@@ -14,6 +14,7 @@ import sys
 REPO = pathlib.Path(__file__).resolve().parent.parent
 JOIN = REPO / "materials" / "replicate_join.py"
 STATE = REPO / "materials" / "model_state.py"
+PROVING = REPO / "execution" / "proving.py"
 SUITE = "tests/test_numerics.py"
 
 MUTATIONS = [
@@ -82,6 +83,23 @@ MUTATIONS = [
     ("the estimator is named `population variance` again", STATE,
      lambda s: s.replace("sample variance, divisor n - 1", "population variance"),
      "test_the_module_names_one_estimator_and_not_two"),
+    # -- a failure that says what happened ---------------------------------
+    ("the signal death goes back to a bare number", PROVING,
+     lambda s: s.replace('        detail = (_signal_reason(proc.returncode) if proc.returncode < 0\n'
+                         '                  else f"host exited {proc.returncode}")',
+                         '        detail = f"host exited {proc.returncode}"  # MUTANT'),
+     "test_the_host_runner_actually_uses_the_explanation"),
+    ("SIGKILL loses the explanation of the empty stderr", PROVING,
+     lambda s: s.replace('"stderr is empty above BECAUSE of the signal, not because the "',
+                         '"" '),
+     "test_a_signal_death_is_named_rather_than_left_as_a_number"),
+    ("every signal gets the same explanation", PROVING,
+     lambda s: s.replace('    return f"killed by {name} ({returncode})"',
+                         '    return "killed by a signal"  # MUTANT'),
+     "test_signals_are_distinguished_from_one_another_and_from_exit_codes"),
+    ("an exit status is described as a signal", PROVING,
+     lambda s: s.replace("    if returncode >= 0:", "    if False:  # MUTANT"),
+     "test_signals_are_distinguished_from_one_another_and_from_exit_codes"),
 ]
 
 
