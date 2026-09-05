@@ -4,7 +4,7 @@
     "binds": "evidence_platform"
     "digest_it_should_check": "sha256:41b191759ffaef4666d4d10a44bd18a4811baba77e7ba9ed671f875400d453f8"
     "imports":
-      "evidence_platform": 291
+      "evidence_platform": 293
       "twin_compiler": 0
   "SCL":
     "binds": "evidence_platform"
@@ -63,7 +63,7 @@
         "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       - "path": "core/projection/project.py"
         "sha256": "055bde598b836cb079a6262a930517438f4e817c74c3f3e81532219686f86cf1"
-"the_correction": "AN EARLIER VERSION OF THIS ARTIFACT PUBLISHED ONE DIGEST, over core/canonical and core/projection, described as the thing a binding party checks. Measured: the acquisition channel imports from this repository 291 times and from those packages ZERO times; the compute layer imports 41 and zero. The digest covered exactly the code no binding party touches, and a change to evidence/types.py -- imported 125 times -- would not have moved it. That is the ORIGINAL CORE-VERSION DEFECT RECURRING: the right KIND of identity over the wrong BODY of code"
+"the_correction": "AN EARLIER VERSION OF THIS ARTIFACT PUBLISHED ONE DIGEST, over core/canonical and core/projection, described as the thing a binding party checks. Measured: the acquisition channel imports from this repository hundreds of times (291 measured 2026-09-03, 293 on 2026-09-05) and from those packages ZERO times; the compute layer imports 41 and zero. The digest covered exactly the code no binding party touches, and a change to evidence/types.py -- imported 125 times -- would not have moved it. That is the ORIGINAL CORE-VERSION DEFECT RECURRING: the right KIND of identity over the wrong BODY of code"
 "what_each_one_is_for":
   "digest": "the IDENTITY -- which core that statement was made about"
   "surface": "WHICH BODY OF CODE the identity is over, which is the part the first version got wrong"

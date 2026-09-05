@@ -491,7 +491,9 @@ def _bound_digest_or_reason() -> Dict[str, object]:
     An earlier version of this register published one digest and called
     it "the core they bind". Measured, no binding party imports that
     track at all -- the acquisition channel reaches into this repository
-    291 times and into that track zero. The register was publishing a
+    hundreds of times -- 291 measured 2026-09-03, 293 on 2026-09-05 --
+    and into that track zero on every measurement. The register was
+    publishing a
     fingerprint of code nobody uses, under a heading claiming otherwise.
     """
     try:

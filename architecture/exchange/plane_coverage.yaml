@@ -24,7 +24,6 @@
   - "postgres"
   - "preflight"
   - "readiness"
-  - "release"
   - "replay"
   - "router"
   - "search"
@@ -87,6 +86,8 @@
   "registry":
     - "DAQ"
     - "STE"
+  "release":
+    - "STE"
   "retention":
     - "STE"
   "runtime":
@@ -97,12 +98,12 @@
     - "STE"
 "subject": "the plane architecture, measured against the tree"
 "summary":
-  "absent": 39
+  "absent": 38
   "concepts_named": 61
   "planes_declared": 4
-  "present": 22
+  "present": 23
 "the_finding":
-  "a_specification_is_a_claim_about_a_tree": "22 of 61 named concepts exist. That is not a criticism -- a design may describe what is not built. It is recorded because a document describing a system reads exactly the same whether the system exists or not, and this is the only thing that tells them apart"
+  "a_specification_is_a_claim_about_a_tree": "23 of 61 named concepts exist. That is not a criticism -- a design may describe what is not built. It is recorded because a document describing a system reads exactly the same whether the system exists or not, and this is the only thing that tells them apart"
   "unenforceable_rather_than_merely_unbuilt": "['tenant', 'http', 'mcp', 'token', 'signature'] are absent, and their absence is a different kind from the rest. Three of the four planes are defined as TENANT-BOUND and no tenant concept exists anywhere. A plane distinction resting on an authority boundary the tree does not have cannot be enforced, and an API carrying tenant-shaped names with no tenant enforcement reads as isolated while isolating nothing -- which is worse than one that never claimed to"
   "what_was_built_instead": "api/envelope.py -- the specification's own key invariant, which is the one part buildable before any of the absent concepts: a response is grounded or it says it is not, there is no third construction, and the read-only planes cannot report a mutation. It does not authenticate, authorise or bind a tenant, and says so"
 "treatments":

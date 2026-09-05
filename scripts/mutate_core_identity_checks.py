@@ -114,7 +114,11 @@ MUTATIONS = [
                          "a refinement"),
      "test_the_artifact_states_the_correction_rather_than_quietly_replacing_it"),
     ("the emitted artifact edited without re-deriving it", ARTIFACT,
-     lambda s: s.replace('      "evidence_platform": 291', '      "evidence_platform": 0'),
+     # NOT a literal count: DAQ's import total moves as that party
+     # develops (291 on 2026-09-03, 293 on 2026-09-05), and a mutation
+     # string pinned to today's number goes MALFORMED the next time they
+     # commit -- reporting a broken battery rather than a broken lock.
+     lambda s: s.replace('"twin_compiler": 0', '"twin_compiler": 99'),
      "test_the_artifact_is_a_fixed_point"),
 
     ("verify ignores the surface it was asked about", IDENTITY,

@@ -242,7 +242,9 @@ observed by the census and could only be closed here.
 
 The register published **one** digest under this heading. Measured, no
 binding party imports the track it covered: the acquisition channel
-reaches into this repository 291 times and into that track **zero**. The
+reaches into this repository hundreds of times — 291 measured
+2026-09-03, 293 on 2026-09-05 — and into that track **zero** on every
+measurement. The
 register was publishing a fingerprint of code nobody uses, under a
 heading claiming the opposite.
 

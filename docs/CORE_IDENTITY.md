@@ -57,7 +57,9 @@ The first version of this module published **one** digest, over
 binding party checks. That description was false, and the measurement is
 exact.
 
-The acquisition channel imports from this repository **291 times** —
+The acquisition channel imports from this repository **291 times**
+(measured 2026-09-03; 293 on 2026-09-05, since that party keeps
+developing — the count moves, the zero below does not) —
 `evidence` 125, `materials` 105, `scout` 46, `retrieval` 11, `structures`
 4. It imports from `core` **zero times**. The compute layer imports 41
 and zero. So the digest published as *the core they bind* covered exactly
@@ -81,7 +83,7 @@ experiment, workbench}`. Two unrelated projects sharing one repository.
 | surface | what it covers | who binds it |
 |---|---|---|
 | `twin_compiler` | canonical state, schema, versioning, deltas, validation, projection | nobody measured |
-| `evidence_platform` | `evidence/` types, identity, classes, admission, pool | DAQ (291), SCL (41) |
+| `evidence_platform` | `evidence/` types, identity, classes, admission, pool | DAQ (293), SCL (41) |
 
 Each is named, each is digested, and the register records **which one a
 party binds — measured from what it imports, not assumed**.
@@ -177,90 +179,30 @@ And it does not know what any party has *checked out*. This register
 reads sibling clones on one machine; it cannot see another party's
 working tree and does not pretend to.
 
-## One invariant is written and held, and this says why
+## The invariant that was held, and how it landed
 
-The rule this correction establishes —
+`identity_covers_what_is_bound` is now a row in
+`architecture/invariants.yaml` and appears in the derived register.
 
-> a published content identity names the surface it covers, and a
-> party's binding to that surface is **measured** from what it imports
-> rather than assumed; a digest whose surface the binding party does not
-> import is refused with the counts
-
-— is **enforced in code and locked in tests** (`covers_what_is_bound`,
-driven over both tracks in both directions). It is **not yet a row in
-`architecture/invariants.yaml`**, and the reason is the register's own
-rule rather than an oversight.
-
-The invariant register is a projection over three parties. Emitting it
-requires every sibling clone to be current against its remote. At the
-time of writing both are behind — DAQ at `9927d1b` against `ea3a008`,
-SCL at `8b39ec3` against `e31ba0e` — and this session cannot advance
-another session's working tree.
+**It was held for a while, and the reason is worth keeping.** The
+register is a projection over three parties, and emitting it requires
+every sibling clone to be current against its remote. Both were behind,
+and this session could not advance another session's working tree.
 
 The deriver offers `check_remotes=False`, which emits from the local
-clones and records that it did. **That is not the right escape here.**
-That flag exists for a remote that cannot be *reached*; the marker it
-writes means *I did not ask*. These remotes were asked and answered: the
-clones are stale. Emitting under that flag would make the artifact say
-something false about what this party knew — a force path wearing a
-disclosure's clothes.
+clones and records that it did. **That was not the right escape.** The
+flag exists for a remote that cannot be *reached*; the marker it writes
+means *I did not ask*. These remotes had been asked and had answered
+*stale*. Emitting under it would have made the artifact say something
+false about what this party knew — a force path wearing a disclosure's
+clothes.
 
-So the row waits for the clones. Faithfulness stays intact
-(`build_invariant_register.py --check` passes), the enforcement is
-already real, and the gap is recorded here rather than closed by
-weakening the gate that found it. **A suite goes green by fixing the
-condition, not by loosening the check that reports it.**
+So the row waited, the enforcement shipped ahead of the declaration, and
+the gap was recorded here rather than closed by weakening the gate that
+found it. **A suite goes green by fixing the condition, not by loosening
+the check that reports it.**
 
-### The row, ready to land
-
-Verbatim, so it goes in unchanged the moment the clones are current:
-
-```yaml
-  - id: identity_covers_what_is_bound
-    scope: this_repository
-    decided: >-
-      2026-09-03, AFTER THE DEFECT SHIPPED TWICE. A content digest is
-      published for one purpose -- so a binding party can check the
-      code it bound. A digest over a body of code that party does not
-      import serves that purpose not partially but not at all: it
-      verifies something unused while a change to what IS used moves
-      nothing.
-    found_by: >-
-      measurement, not review. The acquisition channel imports from this
-      repository 291 times (evidence 125, materials 105, scout 46,
-      retrieval 11, structures 4) and from the digested track ZERO. The
-      compute layer imports 41 and zero. No reading of the code would
-      have shown that; counting the imports did.
-    why_it_recurred: >-
-      it is the ORIGINAL CORE-VERSION DEFECT one level down. That one
-      set the version from this repository's packaging rather than from
-      what this repository declares. This one set the digest's surface
-      from what looked like a core rather than from what a binding party
-      reaches for. Both are the right KIND of identity over the wrong
-      REFERENT, and the second was written by a party that had already
-      fixed the first -- which is the part worth recording.
-    rule: a published content identity names the surface it covers, and
-          a party's binding to that surface is MEASURED from what it
-          imports rather than assumed; a digest whose surface the
-          binding party does not import is refused with the counts
-    status: enforced
-    enforcement:
-      validator: architecture/core_identity.py covers_what_is_bound --
-                 returns (False, reason-with-counts) when the bound
-                 track differs from the surface named, and (False,
-                 no-binding) when a party imports neither
-      locks: tests/test_core_identity.py,
-             tests/test_ecosystem_register.py
-      failure_mode: fail_closed
-    driven_both_ways: >-
-      the locks assert TRUE and FALSE for each track over constructed
-      consumers. A check whose inputs cannot span its branches tests
-      nothing about the branch, which is the failure mode this project
-      has now met five times.
-    residual: >-
-      the binding is measured by import COUNT, and ties return None
-      rather than a guess. A consumer that imports one track heavily
-      and depends on the other for one load-bearing type is reported as
-      binding the first. Counting weights nothing, and a weighted count
-      would be a judgement wearing a measurement's clothes.
-```
+The condition was then fixed: both siblings were fast-forwarded to their
+published heads, the register re-derived with currency established
+against both remotes, and the row landed unchanged from the text parked
+below.

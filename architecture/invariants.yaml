@@ -577,3 +577,51 @@ invariants:
       a shared-vendor review is not independent review. The record makes
       the exposure visible and auditable; it does not remove it, and
       saying otherwise would be the ceremony without the substance.
+
+  - id: identity_covers_what_is_bound
+    scope: this_repository
+    decided: >-
+      2026-09-03, AFTER THE DEFECT SHIPPED TWICE. A content digest is
+      published for one purpose -- so a binding party can check the
+      code it bound. A digest over a body of code that party does not
+      import serves that purpose not partially but not at all: it
+      verifies something unused while a change to what IS used moves
+      nothing.
+    found_by: >-
+      measurement, not review. The acquisition channel imports from this
+      repository 291 times (evidence 125, materials 105, scout 46,
+      retrieval 11, structures 4) and from the digested track ZERO. The
+      compute layer imports 41 and zero. No reading of the code would
+      have shown that; counting the imports did.
+    why_it_recurred: >-
+      it is the ORIGINAL CORE-VERSION DEFECT one level down. That one
+      set the version from this repository's packaging rather than from
+      what this repository declares. This one set the digest's surface
+      from what looked like a core rather than from what a binding party
+      reaches for. Both are the right KIND of identity over the wrong
+      REFERENT, and the second was written by a party that had already
+      fixed the first -- which is the part worth recording.
+    rule: a published content identity names the surface it covers, and
+          a party's binding to that surface is MEASURED from what it
+          imports rather than assumed; a digest whose surface the
+          binding party does not import is refused with the counts
+    status: enforced
+    enforcement:
+      validator: architecture/core_identity.py covers_what_is_bound --
+                 returns (False, reason-with-counts) when the bound
+                 track differs from the surface named, and (False,
+                 no-binding) when a party imports neither
+      locks: tests/test_core_identity.py,
+             tests/test_ecosystem_register.py
+      failure_mode: fail_closed
+    driven_both_ways: >-
+      the locks assert TRUE and FALSE for each track over constructed
+      consumers. A check whose inputs cannot span its branches tests
+      nothing about the branch, which is the failure mode this project
+      has now met five times.
+    residual: >-
+      the binding is measured by import COUNT, and ties return None
+      rather than a guess. A consumer that imports one track heavily
+      and depends on the other for one load-bearing type is reported as
+      binding the first. Counting weights nothing, and a weighted count
+      would be a judgement wearing a measurement's clothes.

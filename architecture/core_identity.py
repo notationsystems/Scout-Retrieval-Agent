@@ -31,7 +31,9 @@ AND THERE ARE TWO OF THEM, WHICH IS A CORRECTION AND NOT A FEATURE. The
 first version published ONE digest, over `core/canonical` and
 `core/projection`, described as the thing a binding party checks. No
 binding party imports that code: the acquisition channel reaches into
-this repository 291 times and into that track ZERO. The digest covered
+this repository hundreds of times -- 291 when first measured on
+2026-09-03, 293 on 2026-09-05 as that party develops -- and into that
+track ZERO, on every measurement. The digest covered
 exactly what nobody uses. See the note on TWIN_SURFACE below -- it is
 the original core-version defect one level down, and every function
 here now takes the surface it is about rather than assuming one.
@@ -49,8 +51,12 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 #:
 #: This surface covers `core/canonical` and `core/projection`. The
 #: acquisition channel -- the party that BINDS this core -- imports from
-#: this repository 291 times: evidence 125, materials 105, scout 46,
-#: retrieval 11, structures 4. It imports from `core` ZERO times.
+#: this repository 291 times when first measured (2026-09-03): evidence
+#: 125, materials 105, scout 46, retrieval 11, structures 4. That total
+#: MOVES as the party develops -- 293 two days later -- and the count is
+#: recorded with its date for that reason. What does not move is the
+#: other column: it imports from `core` ZERO times, and that zero is the
+#: load-bearing half.
 #:
 #: So the digest published as "the thing a binding party checks" covered
 #: exactly the packages that party never touches, and none of what it
@@ -96,7 +102,7 @@ TWIN_SURFACE: Tuple[str, ...] = (
 )
 
 #: Track 2: the evidence platform. What the acquisition channel actually
-#: binds -- the types whose identities its 291 imports resolve against.
+#: binds -- the types whose identities those imports resolve against.
 #: Deliberately the IDENTITY-BEARING modules only, not every file in
 #: those packages: a digest that moved on any change to any of six large
 #: packages would move on nearly every commit and distinguish nothing,
@@ -373,7 +379,8 @@ def identity_document(root: pathlib.Path = REPO_ROOT) -> dict:
             "AN EARLIER VERSION OF THIS ARTIFACT PUBLISHED ONE DIGEST, over "
             "core/canonical and core/projection, described as the thing a "
             "binding party checks. Measured: the acquisition channel imports "
-            "from this repository 291 times and from those packages ZERO "
+            "from this repository hundreds of times (291 measured "
+            "2026-09-03, 293 on 2026-09-05) and from those packages ZERO "
             "times; the compute layer imports 41 and zero. The digest "
             "covered exactly the code no binding party touches, and a change "
             "to evidence/types.py -- imported 125 times -- would not have "
