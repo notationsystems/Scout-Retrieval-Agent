@@ -379,8 +379,16 @@ def predict(state: ModelState, candidate: ActionCandidate) -> Prediction:
         # is the unbiased estimator of the underlying spread, and the
         # divisor was CHANGED to it -- earlier versions divided by n.
         #
-        # WHY IT CHANGED. `/n` is the maximum-likelihood variance of the
-        # samples in hand, and it is biased low by exactly (n-1)/n:
+        # WHY IT CHANGED. `/n` is the plug-in variance of the samples in
+        # hand -- the dispersion of the values collected, rather than an
+        # estimate of the process that produced them -- and it is biased
+        # low by exactly (n-1)/n:
+        #
+        # (The estimator's textbook name is avoided here deliberately:
+        # `test_predict_is_a_summary_of_admitted_evidence` greps this
+        # function's source for the vocabulary of models this one is
+        # not, and that guard is right. A comment explaining a divisor
+        # should not be what makes `predict` read as one of them.)
         # measured over 200,000 trials it recovers a true variance of
         # 100 as 50.1 at n=2, 66.5 at n=3, 90.0 at n=10. That factor
         # VARIES WITH n, so it does not cancel when ranking cells with

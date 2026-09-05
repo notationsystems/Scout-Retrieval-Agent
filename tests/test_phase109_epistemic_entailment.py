@@ -197,7 +197,7 @@ def test_equal_cell_identity_establishes_co_location_not_replication():
     result = predict(state, _Probe("conversion", {"cure_time_min": 60}))
     assert result.sample_count == 2
     assert result.predicted_value == 87.5
-    assert result.uncertainty == pytest.approx(42.25)
+    assert result.uncertainty == pytest.approx(84.5)   # sample variance (n-1), n=2
     # Two different thermal histories, one cell key. Nothing distinguishes
     # this from replication, because the coordinate never named the history.
 

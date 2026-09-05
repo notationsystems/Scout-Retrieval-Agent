@@ -118,12 +118,18 @@ def test_e_repeated_cycle_predictions_evolve():
     assert state.session.predict(candidate).predicted_value == 85.0
     dispatch(state, "observe", ["100"])
     assert state.session.predict(candidate).predicted_value == 90.0
-    assert state.session.predict(candidate).uncertainty == _population_variance([80.0, 90.0, 100.0])
+    assert state.session.predict(candidate).uncertainty == _sample_variance([80.0, 90.0, 100.0])
 
 
-def _population_variance(values):
+def _sample_variance(values):
+    """Divisor n-1, matching `materials.model_state.predict`.
+
+    A helper that recomputes the estimator can agree with a WRONG
+    implementation, so this exists only to spell the expected number --
+    the estimator itself is pinned against hand-derived constants in
+    tests/test_numerics.py, which is where a divisor change is caught."""
     mean = sum(values) / len(values)
-    return sum((v - mean) ** 2 for v in values) / len(values)
+    return sum((v - mean) ** 2 for v in values) / (len(values) - 1)
 
 
 # -- Test F: decision evolution -- recomputing after observations can select a different candidate ---

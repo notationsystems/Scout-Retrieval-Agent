@@ -124,7 +124,8 @@ def test_full_research_session_through_cli_dispatch(state: WorkbenchState):
     predict_3 = dispatch(state, "predict", [])
     assert "90.0" in predict_3
     assert state.session.predict(candidate).predicted_value == 90.0
-    assert state.session.predict(candidate).uncertainty == 100.0
+    # sample variance (n-1) of two samples 20 apart: (10^2 + 10^2) / 1 = 200
+    assert state.session.predict(candidate).uncertainty == 200.0
 
     # -- history / diagnostics -- the real trajectory, not a reimplementation ----------------------------
     history_output = dispatch(state, "history", [])

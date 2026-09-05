@@ -41,7 +41,8 @@ meet in one statistic.
 default, no zero. `predict` performs no statistical inference, no
 interpolation, no regression, no Bayesian update, no simulation, no
 temporal evolution: it is `state.samples.get(key, ())` followed by a mean
-and, for 2+ samples, a population variance. `materials/model_state.py`
+and, for 2+ samples, a sample variance (divisor n-1).
+`materials/model_state.py`
 already says so at length -- NOT a physical model, NOT causal, NOT a
 Gaussian process, NOT a Bayesian posterior, NOT calibrated.
 
@@ -264,21 +265,38 @@ def test_the_coordinate_survives_only_in_the_pool(programme):
 def test_every_multi_cell_read_in_production_is_non_scientific():
     """Three exist: the hypothetical-marker scan, the trajectory
     monotonicity CHECK (same key, two states), and a sample count."""
+    # ANCHORED ON THE ENCLOSING FUNCTION, NOT ON A LINE NUMBER. This
+    # guard pinned `path:lineno`, so editing a COMMENT anywhere above a
+    # listed site broke it -- which happened, and the failure said only
+    # that 271 != 269. A line number is not what this test is about; the
+    # question is which functions read across cells, and that answer
+    # survives every edit that does not move the read.
+    def _enclosing(tree):
+        """node -> the def that contains it, or '<module>'."""
+        owner = {}
+        for parent in ast.walk(tree):
+            if isinstance(parent, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                for child in ast.walk(parent):
+                    owner.setdefault(child, parent.name)
+        return owner
+
     multi_cell = []
     for package in PRODUCTION:
         for path in sorted((REPO / package).rglob("*.py")):
             tree = ast.parse(path.read_text())
+            owner = _enclosing(tree)
             for node in ast.walk(tree):
                 # `.samples.values()` or `.samples.items()` -- iterating ACROSS cells
                 if (isinstance(node, ast.Attribute) and node.attr in ("values", "items")
                         and isinstance(node.value, ast.Attribute)
                         and node.value.attr == "samples"):
-                    multi_cell.append(f"{path.relative_to(REPO)}:{node.lineno}")
+                    where = owner.get(node, "<module>")
+                    multi_cell.append(f"{path.relative_to(REPO)}::{where}")
     assert multi_cell == [
-        "materials/model_state.py:269",     # __post_init__ normalisation
-        "materials/model_state.py:415",     # hypothetical-marker scan
-        "materials/trajectory.py:191",      # monotonicity check, same key across states
-        "workbench/interaction.py:572",     # total_sample_count
+        "materials/model_state.py::__post_init__",              # normalisation
+        "materials/model_state.py::_contains_hypothetical_sample",
+        "materials/trajectory.py::make_model_state_trajectory",  # successor check, same key across states
+        "workbench/interaction.py::total_sample_count",
     ], multi_cell
 
 
@@ -337,7 +355,7 @@ def test_replication_sharpens_one_cell_and_reaches_no_other(programme):
     replicated = predict(state, _Probe(formulation, {"temperature_c": 25}))
     assert replicated.sample_count == 3
     assert replicated.predicted_value == 90.0
-    assert replicated.uncertainty == pytest.approx(8.0 / 3.0)   # population variance of 90/92/88
+    assert replicated.uncertainty == pytest.approx(8.0 / 2.0)   # sample variance (n-1) of 90/92/88
 
     untouched = predict(state, _Probe(formulation, {"temperature_c": 40}))
     assert untouched.sample_count == 1

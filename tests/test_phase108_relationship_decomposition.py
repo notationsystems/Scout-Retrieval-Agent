@@ -229,7 +229,8 @@ def test_a_same_coordinate_contradiction_falsifies_single_valuedness_only():
     contradictory = predict(state, _Probe({"temperature_c": 25}))
     assert contradictory.sample_count == 2
     assert contradictory.predicted_value == 80.0
-    assert contradictory.uncertainty == 100.0     # large, and indistinguishable from scatter
+    # sample variance (n-1) of 70 and 90: ((70-80)^2 + (90-80)^2) / 1 = 200
+    assert contradictory.uncertainty == 200.0     # large, and indistinguishable from scatter
 
 
 # -- 6/7. incomplete coordinate, not failed model --------------------------------------------------
@@ -241,7 +242,7 @@ def test_adding_a_coordinate_dissolves_the_contradiction():
     and Phase 100's typed coordinate already says so, with no new object."""
     projected = _state([({"temperature_c": 25}, [90.0, 70.0])])
     assert len(projected.samples) == 1
-    assert predict(projected, _Probe({"temperature_c": 25})).uncertainty == 100.0
+    assert predict(projected, _Probe({"temperature_c": 25})).uncertainty == 200.0
 
     completed = _state([
         ({"temperature_c": 25, "crystallinity_pct": 42}, [90.0]),
