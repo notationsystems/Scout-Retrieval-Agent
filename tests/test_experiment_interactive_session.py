@@ -147,8 +147,9 @@ def test_repeated_interactive_session_three_cycles():
 
     # -- cycle 2: y2 = 100 ----------------------------------------------------------------------------
     prediction_2 = session_2.predict(candidate)
-    assert prediction_2.predicted_value == 85.0  # mean([80, 90]) -- read off the real implementation
-    assert prediction_2.uncertainty == 25.0
+    assert prediction_2.predicted_value == 85.0  # mean([80, 90])
+    # sample variance, divisor n-1: ((80-85)^2 + (90-85)^2) / 1 = 50
+    assert prediction_2.uncertainty == 50.0
     assert prediction_2.state_id == session_2.state.id
     assert prediction_2.candidate_id == candidate.id
     assert prediction_2.model_state_key == expected_key
@@ -166,7 +167,10 @@ def test_repeated_interactive_session_three_cycles():
     # a fourth prediction, from the successor of the last cycle, for good measure.
     prediction_3 = session_3.predict(candidate)
     assert prediction_3.predicted_value == 90.0  # mean([80, 90, 100])
-    expected_uncertainty = ((80 - 90) ** 2 + (90 - 90) ** 2 + (100 - 90) ** 2) / 3  # population variance, read off the real implementation
+    # sample variance, divisor n-1 -- derived here rather than read off
+    # the implementation, so the test can disagree with the code
+    expected_uncertainty = ((80 - 90) ** 2 + (90 - 90) ** 2 + (100 - 90) ** 2) / 2
+    assert expected_uncertainty == 100.0
     assert abs(prediction_3.uncertainty - expected_uncertainty) < 1e-9
 
     # -- residuals are never reinterpreted -------------------------------------------------------------

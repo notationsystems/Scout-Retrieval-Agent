@@ -96,7 +96,7 @@ on its own.
 
 WHY THIS IS A "REFERENCE" MODEL, NOT A MATERIALS-PHYSICS MODEL: `predict`
 reports only what the model's OWN running statistics already contain --
-the sample mean and (for 2+ samples) the population variance of
+the sample mean and (for 2+ samples) the sample variance of
 observations already admitted for that cell. It makes NO claim about
 what a NOT-YET-PERFORMED experiment will produce. In particular, Phase
 51's `SurrogateState(current_variance, expected_variance_after)` shape
@@ -116,7 +116,7 @@ never a single call fabricating a forecast.
 PHASE 55 -- WHAT THIS MODEL IS, EXPLICITLY, AND WHAT IT IS NOT: it is a
 deterministic empirical estimator over admitted observations -- for
 each `(formulation, property, target_context)` cell, the sample mean
-and (for 2+ samples) the POPULATION variance of every value `update`
+and (for 2+ samples) the sample variance of every value `update`
 has
 ever added to that cell, recomputed on demand, nothing more. It is NOT
 a physical model (it encodes no materials science -- see "WHY THIS IS A
@@ -125,7 +125,7 @@ its predictions, `materials.assessment.PredictionAssessment.residual`,
 is documented there as carrying no causal claim), NOT a Gaussian
 process, NOT a Bayesian posterior (no prior, no likelihood, no update
 rule beyond appending a sample to a list), NOT a calibrated uncertainty
-model (`uncertainty` is a raw population variance, never validated
+model (`uncertainty` is a raw sample variance, never validated
 against
 held-out data or checked for coverage), and NOT a general surrogate
 (there is exactly one implementation, and Phase 52's own investigation
@@ -336,7 +336,7 @@ class Prediction:
     recompute). Deliberately carries no `confidence`/probability
     interval/calibration/likelihood/model-quality/accuracy/epistemic-
     status field: this reference model's statistics (a sample mean and,
-    for 2+ samples, a population variance) do not support any of those
+    for 2+ samples, a sample variance) do not support any of those
     claims, and none is fabricated here.
 
     Carries NO id of its own: `Prediction` is a pure, always-reproducible
@@ -375,31 +375,35 @@ def predict(state: ModelState, candidate: ActionCandidate) -> Prediction:
     else:
         values = tuple(s.value for s in samples)
         mean = sum(values) / n
-        # THE ESTIMATOR IS THE POPULATION VARIANCE, DIVISOR n, and the
-        # n >= 2 guard is a SEPARATE and deliberate decision. Naming both
-        # explicitly because the combination looks like an inconsistency
-        # and is not:
+        # THE SAMPLE VARIANCE, DIVISOR n - 1 (Bessel's correction). This
+        # is the unbiased estimator of the underlying spread, and the
+        # divisor was CHANGED to it -- earlier versions divided by n.
         #
-        #   the divisor. `/n` is the maximum-likelihood (plug-in)
-        #   variance of the samples in hand. It is NOT the unbiased
-        #   estimator of an underlying population variance: measured over
-        #   200,000 trials, `/n` recovers a true variance of 100 as 50.1
-        #   at n=2, 66.5 at n=3, 90.0 at n=10 -- biased low by exactly
-        #   (n-1)/n. That factor VARIES WITH n, so it does not cancel
-        #   when ranking cells with different sample counts, and a cell
-        #   with two samples therefore looks more certain than one with
-        #   ten at the same true spread. Anything selecting experiments
-        #   on this number should know that; see docs/NUMERICS.md.
+        # WHY IT CHANGED. `/n` is the maximum-likelihood variance of the
+        # samples in hand, and it is biased low by exactly (n-1)/n:
+        # measured over 200,000 trials it recovers a true variance of
+        # 100 as 50.1 at n=2, 66.5 at n=3, 90.0 at n=10. That factor
+        # VARIES WITH n, so it does not cancel when ranking cells with
+        # different sample counts -- a cell with two samples looked more
+        # certain than one with ten at the same true spread. For a loop
+        # that selects experiments by variance reduction that is exactly
+        # backwards: it under-explores where the data is thinnest.
         #
-        #   the guard. Under `/n` a single sample has a perfectly defined
-        #   variance -- zero -- and returning it would be the more
-        #   dangerous answer: it asserts certainty from one observation,
-        #   in a field where one measurement is how a wrong number gets
-        #   believed. `None` says "not determinable from this cell",
-        #   which is what is true. So the guard is not the n-1
-        #   convention leaking in; it is a refusal that outranks the
-        #   estimator's own domain.
-        variance = (sum((v - mean) ** 2 for v in values) / n) if n >= 2 else None
+        # WHAT A READER EXPECTS. `uncertainty` on a handful of
+        # observations is read as an estimate of the process's spread,
+        # not of the spread of the particular values collected. The
+        # unbiased estimator is the one that answers that question, and
+        # it is what `numpy.var(ddof=1)`, R's `var` and every
+        # introductory treatment mean by "the sample variance".
+        #
+        # THE n >= 2 GUARD IS NOW DEFINITIONAL. With divisor n - 1 a
+        # single sample has no variance at all -- the expression is 0/0
+        # -- so `None` is the only available answer rather than a
+        # judgement call. Under the old divisor it was a judgement call,
+        # and the right one: zero would have asserted certainty from one
+        # observation. The two conventions now agree about n = 1 for
+        # different reasons, and this one needs no argument.
+        variance = (sum((v - mean) ** 2 for v in values) / (n - 1)) if n >= 2 else None
 
     return Prediction(
         candidate_id=candidate.id, formulation=candidate.formulation, property=candidate.property,
@@ -516,7 +520,7 @@ class ModelStateInformationValueModel:
                 f"(formulation, property, context) cell -- sample_count={prediction.sample_count}"
             )
         return prediction.uncertainty, (
-            f"current predictive uncertainty (population variance, divisor n) "
+            f"current predictive uncertainty (sample variance, divisor n - 1) "
             f"at model state {self._state.id}; "
             f"sample_count={prediction.sample_count}"
         )

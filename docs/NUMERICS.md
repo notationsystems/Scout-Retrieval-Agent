@@ -76,19 +76,21 @@ before any arithmetic, and the clamp only ever sees finite values.
 
 This was found by pursuing a mutant that looked equivalent and was not.
 
-## The predictive variance names one estimator
+## The predictive variance: divisor changed to n−1
 
-`materials.model_state.predict` reports `uncertainty` as the
-**population variance, divisor n**. The module previously called this
-"population variance" in two docstrings and "sample variance" in three
-others — different estimators, since "sample variance" conventionally
-carries Bessel's correction. It now says one thing.
+`materials.model_state.predict` reports `uncertainty` as the **sample
+variance, divisor n−1** (Bessel's correction) — the unbiased estimator.
 
-### What divisor n costs, measured
+**This is a change.** It previously divided by n. The question surfaced
+because the module could not say which estimator it computed: two
+docstrings called it "population variance", three called it "sample
+variance", and those are different things.
+
+### Why it changed, measured
 
 Estimating a true variance of 100.0, 200,000 trials per row:
 
-| n | E[÷n] (as shipped) | E[÷(n−1)] | bias of ÷n |
+| n | E[÷n] (previous) | E[÷(n−1)] (now) | bias of ÷n |
 |---|---|---|---|
 | 2 | 50.1 | 100.2 | **−49.9%** |
 | 3 | 66.5 | 99.7 | −33.5% |
@@ -97,26 +99,41 @@ Estimating a true variance of 100.0, 200,000 trials per row:
 | 30 | 96.7 | 100.0 | −3.3% |
 
 ÷n is biased low by exactly (n−1)/n, and **that factor varies with n**.
-It is not a constant rescaling, so it does not cancel when ranking cells
-with different sample counts: a cell with two samples looks more certain
-than one with ten at the same true spread. Anything selecting
-experiments on variance reduction should know this — it under-explores
-where data is thinnest, which is backwards.
+It is not a constant rescaling, so it did not cancel when ranking cells
+with different sample counts: a cell with two samples looked more
+certain than one with ten at the same true spread. For a loop that
+selects experiments by variance reduction that is backwards — it
+under-explored where the data was thinnest.
 
-The estimator is **unchanged** here. Switching it would alter every
-number the library reports, and that is a decision for the project
-rather than a correction to make in passing. It is documented so the
-choice is visible.
+`uncertainty` over a handful of observations is also read as an estimate
+of the *process's* spread, not of the spread of the particular values
+collected. The unbiased estimator answers that question, and is what
+`numpy.var(ddof=1)`, R's `var`, and every introductory treatment mean by
+"the sample variance".
 
-### Why one sample gives `None` rather than `0.0`
+The change is verified by the property it was made for rather than by
+inspection: `test_the_estimator_is_unbiased_where_the_old_one_was_not`
+averages 60,000 draws at n = 2 and n = 5 and requires recovery of the
+true variance.
 
-Under divisor n a single sample has a perfectly defined variance: zero.
-Returning it would be the more dangerous answer — it asserts certainty
-from one observation, which is how a wrong number gets believed. `None`
-says *not determinable from this cell*, which is what is true.
+### Why one sample gives `None`
 
-So the `n >= 2` guard is **not** the n−1 convention leaking in. It is a
-refusal that outranks the estimator's own domain.
+With divisor n−1 this is **definitional**: one sample gives 0/0, so
+`None` is the only available answer.
+
+Under the previous divisor it was a judgement call, and the right one —
+zero is perfectly defined there, and returning it would have asserted
+certainty from a single observation, which is how a wrong number gets
+believed. The two conventions agree about n = 1 for different reasons,
+and this one needs no argument.
+
+### What the change touched
+
+Five pinned tests carried the old values and were updated with
+hand-derived ones. Two of them said the expected number was "read off
+the real implementation" — an honest note, and exactly the habit that
+lets an estimator drift without any test objecting. They now derive the
+value independently, so they can disagree with the code.
 
 ## What was checked and found clean
 
@@ -131,9 +148,9 @@ float-equality-against-zero in the shipped tree are the two in
 
 ## Locks
 
-`tests/test_numerics.py` — 11 locks, each driven at the sample size
+`tests/test_numerics.py` — 12 locks, each driven at the sample size
 where the property actually bites, with counts large enough to catch a
-15% event. `scripts/mutate_numerics_checks.py` — 10/10 mutants killed.
+15% event. `scripts/mutate_numerics_checks.py` — 11/11 mutants killed.
 
 One mutant is deliberately **not** in that list: relaxing `len(pairs) < 2`
 to `< 1`. With one pair the mean equals the value, so variance is

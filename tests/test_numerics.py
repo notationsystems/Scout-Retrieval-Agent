@@ -206,23 +206,46 @@ def test_rho_is_unchanged_by_a_shift_that_would_wreck_a_naive_formula():
 # --------------------------------------- the variance names its form --
 
 
-def test_the_predictive_variance_is_the_divisor_n_form_it_names():
-    """The module documented this as `population variance` in two places
-    and `sample variance` in three others. Those are DIFFERENT
-    ESTIMATORS -- `sample variance` conventionally carries Bessel's
-    correction -- so the docstrings disagreed about what the number was.
+def test_the_predictive_variance_is_the_unbiased_estimator():
+    """THE DIVISOR CHANGED, and the docstrings that disagreed about it
+    were the thing that surfaced the question.
 
-    This pins which one it actually is, by arithmetic a reader can do
-    by hand rather than by re-deriving the implementation."""
+    The module called this `population variance` in two places and
+    `sample variance` in three others -- different estimators, since the
+    latter conventionally carries Bessel's correction. It computed the
+    former. It now computes and names the latter, because divisor n is
+    biased low by (n-1)/n and that factor varies with n, so it did not
+    cancel when ranking cells with different sample counts.
+
+    Pinned by arithmetic a reader can do by hand, so this test can
+    disagree with the implementation rather than echo it."""
     values = (80.0, 90.0, 100.0)
     mean = 90.0
-    population = sum((v - mean) ** 2 for v in values) / 3      # 66.66...
     unbiased = sum((v - mean) ** 2 for v in values) / 2        # 100.0
+    plug_in = sum((v - mean) ** 2 for v in values) / 3         # 66.66...
 
     variance = _predict_variance(values)
 
-    assert variance == population
-    assert variance != unbiased
+    assert variance == unbiased == 100.0
+    assert variance != plug_in
+
+
+def test_the_estimator_is_unbiased_where_the_old_one_was_not():
+    """The property the change was made FOR, measured rather than
+    asserted. Divisor n recovered a true variance of 100 as roughly 50
+    at n = 2; the unbiased form recovers it. Averaged over enough draws
+    that the difference cannot be sampling noise."""
+    random.seed(23)
+    true_variance = 100.0
+    for size, tolerance in ((2, 3.0), (5, 1.5)):
+        total = 0.0
+        trials = 60000
+        for _ in range(trials):
+            drawn = tuple(random.gauss(0.0, 10.0) for _ in range(size))
+            total += _predict_variance(drawn)
+        estimated = total / trials
+        assert abs(estimated - true_variance) < tolerance, (
+            f"n={size}: recovered {estimated:.2f}, expected ~{true_variance}")
 
 
 def _predict_variance(values):
@@ -256,14 +279,17 @@ def _predict_variance(values):
 
 
 def test_one_sample_yields_no_uncertainty_rather_than_zero():
-    """Under divisor n a single sample has a defined variance -- zero --
-    so this refusal is a DECISION, not the estimator's domain. Zero
-    would assert certainty from one observation, which is how a wrong
-    number gets believed."""
+    """With divisor n - 1 this is DEFINITIONAL: one sample gives 0/0, so
+    `None` is the only available answer.
+
+    Under the previous divisor it was a judgement call, and the right
+    one -- zero would have asserted certainty from a single observation.
+    The two conventions agree about n = 1 for different reasons, and
+    this one needs no argument."""
     assert _predict_variance((42.0,)) is None
     # and two samples DO yield one, so the refusal is about the count
     # rather than about never producing a variance at all
-    assert _predict_variance((42.0, 44.0)) == 1.0
+    assert _predict_variance((42.0, 44.0)) == 2.0
 
 
 def test_the_module_names_one_estimator_and_not_two():
@@ -271,10 +297,12 @@ def test_the_module_names_one_estimator_and_not_two():
     naming two different estimators. A reader deciding whether to trust
     the number has to be able to find out which it is."""
     source = (ROOT / "materials" / "model_state.py").read_text()
-    assert "population variance" in source
-    # `sample variance` may appear only where it is explicitly contrasted
-    # with what this module computes, never as a name for it
+    assert "sample variance" in source
+    assert "divisor n - 1" in source
+    # `population variance` may appear only in the recorded explanation
+    # of what the divisor USED to be, never as a name for what it is
     for line in source.splitlines():
-        if "sample variance" in line:
+        stripped = line.strip()
+        if "population variance" in stripped and not stripped.startswith("#"):
             raise AssertionError(
-                f"`sample variance` names the divisor-n estimator again: {line.strip()!r}")
+                f"`population variance` names the estimator again: {stripped!r}")

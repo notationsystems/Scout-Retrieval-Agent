@@ -288,7 +288,7 @@ def test_uncertainty_is_a_within_cell_quantity(state: WorkbenchState):
     late = state.prediction_at(baseline, state.session.state)
     # across states, for one candidate: a defined before/after reading
     assert early.uncertainty is None      # one sample: no defined variance
-    assert late.uncertainty == 100.0      # two samples: population variance
+    assert late.uncertainty == 200.0      # two samples: sample variance (n-1)
 
     # across candidates, at one state: two variances of two different
     # physical quantities. The algebra offers no operation combining them.

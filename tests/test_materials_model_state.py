@@ -167,7 +167,7 @@ def test_7_uncertainty_changes_only_when_warranted():
 
     prediction2 = predict(state2, candidate)
     assert prediction2.predicted_value == 85.0
-    assert prediction2.uncertainty == 25.0  # ((80-85)^2 + (90-85)^2) / 2
+    assert prediction2.uncertainty == 50.0  # sample variance (n-1) of [80, 90]
 
     # An update to a DIFFERENT (formulation, property, context) cell must not
     # change this candidate's prediction at all -- same state content for the
@@ -183,7 +183,7 @@ def test_7_uncertainty_changes_only_when_warranted():
     state3 = update(state2, hardness_candidate, result3, obs3)
 
     prediction3 = predict(state3, candidate)
-    assert prediction3.uncertainty == prediction2.uncertainty == 25.0
+    assert prediction3.uncertainty == prediction2.uncertainty == 50.0  # sample variance (n-1) of [80, 90]
     assert prediction3.predicted_value == prediction2.predicted_value == 85.0
     assert prediction3.sample_count == prediction2.sample_count == 2
     assert state3.id != state2.id  # the state itself did change (a new cell was added)
@@ -204,7 +204,7 @@ def test_8_information_value_seam_before_and_after():
     result2, obs2 = _admit_result(pool, doc, campaign, entry, "ts-90", 90)
     state2 = update(state1, candidate, result2, obs2)
     estimate_after = estimate_information_value(candidate, iteration, ModelStateInformationValueModel(state2))
-    assert estimate_after.estimate == 25.0
+    assert estimate_after.estimate == 50.0  # sample variance (n-1) of [80, 90]
     assert estimate_after.estimate_status == ESTIMATED
 
     assert estimate_before.estimate != estimate_after.estimate
@@ -401,7 +401,7 @@ def test_13_prediction_reproducible_across_independently_built_states():
     prediction_b = predict(state_b, candidate)
     assert prediction_a == prediction_b  # every field equal, including model_state_key
     assert prediction_a.predicted_value == 85.0
-    assert prediction_a.uncertainty == 25.0
+    assert prediction_a.uncertainty == 50.0  # sample variance (n-1) of [80, 90]
 
     # Calling predict() again against the SAME state is likewise
     # side-effect-free and reproduces the identical Prediction.

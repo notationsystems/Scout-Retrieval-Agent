@@ -209,9 +209,16 @@ def test_an_observed_difference_is_not_a_predicted_difference(state: WorkbenchSt
 # -- uncertainty: what it is, and why it cannot be propagated (sec.7) --------------------------------
 
 
-def test_uncertainty_is_a_population_variance_of_admitted_samples(state: WorkbenchState):
+def test_uncertainty_is_a_sample_variance_of_admitted_samples(state: WorkbenchState):
     """Not a standard error, not a predictive interval. A dispersion of
-    measurements already taken, within ONE cell."""
+    measurements already taken, within ONE cell.
+
+    THE DIVISOR CHANGED, and this test changed with it. It previously
+    pinned the divisor-n form and asserted the n-1 form was NOT what was
+    returned. Divisor n is biased low by (n-1)/n -- half the true
+    variance at n = 2 -- and that factor varies with n, so it did not
+    cancel when ranking cells with different sample counts. See
+    docs/NUMERICS.md."""
     dispatch(state, "select", ["baseline", "25"])
     candidate = state.selected_candidate
     dispatch(state, "observe", ["80"])
@@ -220,12 +227,12 @@ def test_uncertainty_is_a_population_variance_of_admitted_samples(state: Workben
 
     values = [80.0, 100.0]
     mean = sum(values) / len(values)
-    population_variance = sum((v - mean) ** 2 for v in values) / len(values)
-    assert state.session.predict(candidate).uncertainty == population_variance
-    # population (n), not sample (n-1) -- it describes the samples held,
-    # it does not estimate a wider population from them
     sample_variance = sum((v - mean) ** 2 for v in values) / (len(values) - 1)
-    assert state.session.predict(candidate).uncertainty != sample_variance
+    assert state.session.predict(candidate).uncertainty == sample_variance
+    # unbiased (n-1), not the maximum-likelihood plug-in (n) -- it
+    # estimates the spread of the process, not of the values in hand
+    population_variance = sum((v - mean) ** 2 for v in values) / len(values)
+    assert state.session.predict(candidate).uncertainty != population_variance
 
 
 def test_prediction_carries_no_field_that_could_support_propagation(state: WorkbenchState):

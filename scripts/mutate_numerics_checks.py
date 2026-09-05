@@ -64,18 +64,23 @@ MUTATIONS = [
     # to check anything, so it is recorded here instead.
 
     # -- the variance names its estimator ----------------------------------
-    ("the divisor silently becomes Bessel-corrected", STATE,
+    ("the divisor reverts to the biased plug-in form", STATE,
      lambda s: s.replace(
-         "        variance = (sum((v - mean) ** 2 for v in values) / n) if n >= 2 else None",
-         "        variance = (sum((v - mean) ** 2 for v in values) / (n - 1)) if n >= 2 else None  # MUTANT"),
-     "test_the_predictive_variance_is_the_divisor_n_form_it_names"),
-    ("one sample reports zero uncertainty instead of none", STATE,
+         "        variance = (sum((v - mean) ** 2 for v in values) / (n - 1)) if n >= 2 else None",
+         "        variance = (sum((v - mean) ** 2 for v in values) / n) if n >= 2 else None  # MUTANT"),
+     "test_the_predictive_variance_is_the_unbiased_estimator"),
+    ("the divisor reverts, caught by the bias it reintroduces", STATE,
      lambda s: s.replace(
-         "        variance = (sum((v - mean) ** 2 for v in values) / n) if n >= 2 else None",
-         "        variance = sum((v - mean) ** 2 for v in values) / n  # MUTANT"),
+         "        variance = (sum((v - mean) ** 2 for v in values) / (n - 1)) if n >= 2 else None",
+         "        variance = (sum((v - mean) ** 2 for v in values) / n) if n >= 2 else None  # MUTANT"),
+     "test_the_estimator_is_unbiased_where_the_old_one_was_not"),
+    ("one sample divides by zero instead of refusing", STATE,
+     lambda s: s.replace(
+         "        variance = (sum((v - mean) ** 2 for v in values) / (n - 1)) if n >= 2 else None",
+         "        variance = (sum((v - mean) ** 2 for v in values) / (n - 1)) if n >= 1 else None  # MUTANT"),
      "test_one_sample_yields_no_uncertainty_rather_than_zero"),
-    ("the estimator is named `sample variance` again", STATE,
-     lambda s: s.replace("population variance, divisor n", "sample variance"),
+    ("the estimator is named `population variance` again", STATE,
+     lambda s: s.replace("sample variance, divisor n - 1", "population variance"),
      "test_the_module_names_one_estimator_and_not_two"),
 ]
 

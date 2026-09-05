@@ -133,7 +133,7 @@ def test_2_3_signed_prediction_and_uncertainty_delta():
     assert d1.new_prediction.predicted_value == 85.0
     assert d1.delta_predicted_value == 5.0
     assert d1.previous_prediction.uncertainty is None
-    assert d1.new_prediction.uncertainty == 25.0
+    assert d1.new_prediction.uncertainty == 50.0  # sample variance (n-1) of [80, 90]
     assert d1.delta_uncertainty is None
 
 
@@ -174,7 +174,7 @@ def test_5_historical_state_preservation():
     assert repr(state1) == before_state1_repr
     assert repr(state2) == before_state2_repr
     assert predict(state1, candidate).predicted_value == 80.0
-    assert predict(state2, candidate).uncertainty == 25.0
+    assert predict(state2, candidate).uncertainty == 50.0  # sample variance (n-1) of [80, 90]
 
 
 # -- 6. multiple trajectory entries (3 states -> 2 diagnostics, correctly ordered) --------------------------
@@ -213,7 +213,7 @@ def test_7_deterministic_and_information_value_coexistence():
     assert before.information_value.candidate_id == d1.candidate_id
     assert before.estimate_status == NOT_DETERMINABLE
     assert after.estimate_status == ESTIMATED
-    assert after.estimate == 25.0
+    assert after.estimate == 50.0  # sample variance (n-1) of [80, 90]
 
 
 # -- 8. deterministic behavior across PYTHONHASHSEED -----------------------------------------------------------

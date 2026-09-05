@@ -196,7 +196,8 @@ def test_4_5_6_closed_loop_update_prediction_and_historical_state_id():
     # just a different id.
     prediction2 = predict(state2, candidate)
     assert prediction2.predicted_value == 85.0
-    assert prediction2.uncertainty == 25.0  # ((80-85)^2 + (90-85)^2) / 2 -- now estimable
+    # sample variance, divisor n-1: ((80-85)^2 + (90-85)^2) / (2-1) = 50
+    assert prediction2.uncertainty == 50.0  # now estimable
     assert prediction2.predicted_value != prediction1.predicted_value
     assert prediction2.uncertainty != prediction1.uncertainty
 
@@ -233,7 +234,9 @@ def test_7_information_value_before_and_after_real_update():
     state2 = update(state1, candidate, result2, obs2)
 
     estimate_after = estimate_information_value(candidate, iteration, ModelStateInformationValueModel(state2))
-    assert estimate_after.estimate == 25.0
+    # the cell's sample variance, divisor n-1: two samples 80 and 90
+    # about a mean of 85 give ((80-85)^2 + (90-85)^2) / (2-1) = 50
+    assert estimate_after.estimate == 50.0
     assert estimate_after.estimate_status == ESTIMATED
     assert estimate_before.estimate != estimate_after.estimate  # caused by the real, admitted observation
 

@@ -146,7 +146,7 @@ def test_3_prediction_evolution():
     assert steps[0].prediction.predicted_value is None
     assert steps[1].prediction.predicted_value == 80.0
     assert steps[2].prediction.predicted_value == 85.0
-    assert steps[2].prediction.uncertainty == 25.0
+    assert steps[2].prediction.uncertainty == 50.0  # sample variance (n-1) of [80, 90]
 
     # each step's prediction remains tied to ITS OWN state -- never the
     # next one.
@@ -191,7 +191,7 @@ def test_5_historical_state_immutability():
     assert repr(state1) == before_state1_repr
     assert repr(state2) == before_state2_repr
     assert predict(state1, candidate).predicted_value == 80.0  # unchanged by trajectory analysis
-    assert predict(state2, candidate).uncertainty == 25.0
+    assert predict(state2, candidate).uncertainty == 50.0  # sample variance (n-1) of [80, 90]
 
 
 # -- 6. deterministic trajectory ordering -------------------------------------------------------------------
@@ -229,7 +229,7 @@ def test_7_information_value_evolution_via_existing_composition():
     assert estimates[0].estimate_status == NOT_DETERMINABLE  # S0: zero samples
     assert estimates[1].estimate_status == NOT_DETERMINABLE  # S1: one sample, no defined variance
     assert estimates[2].estimate_status == ESTIMATED
-    assert estimates[2].estimate == 25.0  # S2
+    assert estimates[2].estimate == 50.0  # sample variance (n-1) of [80, 90]
 
 
 # -- 8. deterministic behavior across PYTHONHASHSEED -----------------------------------------------------------

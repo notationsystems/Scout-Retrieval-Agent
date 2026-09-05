@@ -117,7 +117,7 @@ def test_4_prediction_after_branch():
 
     outcome = project_outcome(state1, candidate, 90.0)
     assert outcome.prediction_after.predicted_value == 85.0  # mean([80, 90])
-    assert outcome.prediction_after.uncertainty == 25.0
+    assert outcome.prediction_after.uncertainty == 50.0  # sample variance (n-1) of [80, 90]
     assert outcome.prediction_after.state_id == outcome.projected_state_id
 
     # delta reuses materials.trajectory.compare_predictions exactly.
@@ -136,13 +136,13 @@ def test_5_6_branch_information_values_and_missing_probability():
     state1 = update(EMPTY_MODEL_STATE, candidate, result1, obs1)
 
     o80 = project_outcome(state1, candidate, 80.0)  # variance 0.0
-    o90 = project_outcome(state1, candidate, 90.0)  # variance 25.0 -- no probability supplied
+    o90 = project_outcome(state1, candidate, 90.0)  # variance 50.0 -- no probability supplied
     branch_set = make_counterfactual_set((o80, o90))
 
     result = evaluate_counterfactual_information_value(branch_set, candidate, iteration)
     assert len(result.branch_information_values) == 2
     assert result.branch_information_values[0].estimate == 0.0
-    assert result.branch_information_values[1].estimate == 25.0
+    assert result.branch_information_values[1].estimate == 50.0  # sample variance (n-1) of [80, 90]
     assert result.branch_information_values[0].estimate_status == ESTIMATED
 
     # no probabilities were supplied -- the expected value stays honestly undetermined.
@@ -159,12 +159,12 @@ def test_7_expected_information_value_with_supplied_probabilities():
     state1 = update(EMPTY_MODEL_STATE, candidate, result1, obs1)
 
     o80 = project_outcome(state1, candidate, 80.0, probability=0.5)   # IV = 0.0
-    o90 = project_outcome(state1, candidate, 90.0, probability=0.5)   # IV = 25.0
+    o90 = project_outcome(state1, candidate, 90.0, probability=0.5)   # IV = 50.0
     branch_set = make_counterfactual_set((o80, o90))
 
     result = evaluate_counterfactual_information_value(branch_set, candidate, iteration)
     assert result.expected_information_value_status == ESTIMATED
-    assert result.expected_information_value == 12.5  # 0.5*0.0 + 0.5*25.0
+    assert result.expected_information_value == 25.0  # 0.5*0.0 + 0.5*50.0
 
     # a set with even ONE missing probability stays NOT_DETERMINABLE --
     # never a silent partial sum.

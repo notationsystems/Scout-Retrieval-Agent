@@ -192,7 +192,7 @@ def test_7_information_value_across_projected_neighborhood():
     assert iv_cf_80.estimate_status == ESTIMATED
     assert iv_cf_90.estimate_status == ESTIMATED
     assert iv_cf_80.estimate == 0.0  # [80, 80] -- zero variance
-    assert iv_cf_90.estimate == 25.0  # [80, 90] -- matches Phase 52's own worked example
+    assert iv_cf_90.estimate == 50.0  # sample variance (n-1) of [80, 90]
 
 
 # -- 8. deterministic behavior across PYTHONHASHSEED -----------------------------------------------------------
