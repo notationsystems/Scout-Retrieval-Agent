@@ -150,7 +150,7 @@ float-equality-against-zero in the shipped tree are the two in
 
 `tests/test_numerics.py` — 12 locks, each driven at the sample size
 where the property actually bites, with counts large enough to catch a
-15% event. `scripts/mutate_numerics_checks.py` — 11/11 mutants killed.
+15% event. `scripts/mutate_numerics_checks.py` — 15/15 mutants killed.
 
 One mutant is deliberately **not** in that list: relaxing `len(pairs) < 2`
 to `< 1`. With one pair the mean equals the value, so variance is

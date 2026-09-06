@@ -19,7 +19,13 @@ python3 release/provenance_pool/build.py --out DIR    # emit
 | `experiment` | session and policy layer |
 | `operations` | the second ledger — an append-only trace of what the process did |
 
-**61 modules, 9,338 lines, 47 test files, 545 tests, zero dependencies.**
+**61 modules, 9,426 lines, 48 test files, zero dependencies.**
+
+Those four numbers are checked against the repository by
+`tests/test_docs_match_measurement.py`. The suite's *result* — 557 tests
+passing in the derived tree at the time of writing — is deliberately not
+pinned there: it is a fact about a run, and a test asserting it would
+fail for being run somewhere else, which is not drift.
 
 ## Why a deriver and not a directory of copied source
 
@@ -103,6 +109,6 @@ concepts do not exist in this tree).
 
 ## Locks
 
-`tests/test_release_provenance_pool.py` — 18 locks, every refusal driven
-over **both** answers. `scripts/mutate_release_checks.py` — 16/16 mutants
+`tests/test_release_provenance_pool.py` — 19 locks, every refusal driven
+over **both** answers. `scripts/mutate_release_checks.py` — 17/17 mutants
 killed by their named test.
