@@ -45,6 +45,7 @@ import pytest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "tests"))
 
 
 def _load(path: pathlib.Path):
@@ -86,6 +87,35 @@ def _release_facts() -> dict:
     }
 
 
+def _reduction_rate(which: str) -> int:
+    """Recompute a rate quoted in docs/REDUCTION_DETERMINISM.md, using
+    the same `cpp_min` the reduction locks drive. Imported rather than
+    reimplemented: a copy of the operator here could agree with a wrong
+    doc and a wrong lock at once."""
+    import functools
+    import itertools
+    import math
+
+    from test_reduction_determinism import NAN, VALUES, cpp_min
+
+    def same(x, y):
+        return (math.isnan(x) and math.isnan(y)) or x == y
+
+    if which == "commutativity":
+        return sum(1 for a, b in itertools.product(VALUES, repeat=2)
+                   if not same(cpp_min(a, b), cpp_min(b, a)))
+    if which == "associativity":
+        return sum(1 for a, b, c in itertools.product(VALUES, repeat=3)
+                   if not same(cpp_min(cpp_min(a, b), c),
+                               cpp_min(a, cpp_min(b, c))))
+    if which == "fold_vs_tree":
+        data = [2.0, 3.0, NAN, 1.0]
+        return sum(1 for o in itertools.permutations(data)
+                   if not same(functools.reduce(cpp_min, o),
+                               cpp_min(cpp_min(o[0], o[1]), cpp_min(o[2], o[3]))))
+    raise AssertionError(f"no such rate: {which}")
+
+
 #: (document, regex with ONE capturing group, the measured value).
 #: Each regex must match exactly once, so a claim that moves in the
 #: prose is a failure rather than a silent miss.
@@ -114,6 +144,19 @@ CLAIMS = [
     ("docs/ENGINE_SEAM.md",
      r"mutate_seam_conformance_checks\.py` — (\d+)/\d+ mutants",
      lambda: _declared_mutants("mutate_seam_conformance_checks")),
+    # The reduction figures are MEASURED RATES. A lambda returning the
+    # literal 6 would assert rather than measure -- the uniform-inputs
+    # failure in miniature -- so each recomputes its rate from the same
+    # `cpp_min` the locks use.
+    ("docs/REDUCTION_DETERMINISM.md",
+     r"\| commutativity \| \*\*(\d+) of 16\*\* pairs \|",
+     lambda: _reduction_rate("commutativity")),
+    ("docs/REDUCTION_DETERMINISM.md",
+     r"\| associativity \| \*\*(\d+) of 64\*\* triples \|",
+     lambda: _reduction_rate("associativity")),
+    ("docs/REDUCTION_DETERMINISM.md",
+     r"pairwise tree \| \*\*(\d+) of 24\*\* orderings \|",
+     lambda: _reduction_rate("fold_vs_tree")),
 ]
 
 
