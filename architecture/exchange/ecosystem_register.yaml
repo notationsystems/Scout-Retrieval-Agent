@@ -1,8 +1,8 @@
 "apparatuses":
   - "bound_core": "core@1.0.0"
     "branch": "claude/deterministic-state-architecture-q9kl5c"
-    "commit": "a187e19d7924"
-    "commits": 169
+    "commit": "0e5e916b25d5"
+    "commits": 175
     "core_declaring_files": 9
     "name": "Scout-Retrieval-Agent"
     "remote": "notationsystems/Scout-Retrieval-Agent"
@@ -11,18 +11,18 @@
     "verdict_because": "declares core@1.0.0 in 9 architecture file(s) and its history is authored here"
   - "bound_core": "core@1.0.0"
     "branch": "claude/daf-state-space-architecture-v8peqd"
-    "commit": "e294992f3d9f"
-    "commits": 130
-    "core_declaring_files": 81
+    "commit": "6b378590da30"
+    "commits": 135
+    "core_declaring_files": 85
     "name": "notations-acquisition-channel"
     "remote": "notationsystems/notations-acquisition-channel"
     "role": "NOT_DECLARED"
     "role_source": ""
-    "verdict_because": "declares core@1.0.0 in 81 architecture file(s) and its history is authored here"
+    "verdict_because": "declares core@1.0.0 in 85 architecture file(s) and its history is authored here"
   - "bound_core": "core@1.0.0"
     "branch": "claude/scl-architecture-design-0jzkm9"
-    "commit": "ecc6169563fb"
-    "commits": 35
+    "commit": "5e62820f8682"
+    "commits": 36
     "core_declaring_files": 5
     "name": "scientific-compute-layer"
     "remote": "notationsystems/Scientific-Compute-Layer-SCL-"
@@ -62,7 +62,7 @@
       "DAQ":
         "binds": "evidence_platform"
         "imports":
-          "evidence_platform": 293
+          "evidence_platform": 294
           "twin_compiler": 0
       "SCL":
         "binds": "evidence_platform"

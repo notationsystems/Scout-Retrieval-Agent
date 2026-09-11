@@ -844,3 +844,105 @@ def test_a_sibling_commit_is_never_excluded_from_the_comparison():
     assert without_currency(tampered, party) != stripped, (
         "changing a sibling's commit must change the comparison, or the "
         "exclusion has swallowed the thing it was narrowed to protect")
+
+
+# ------------------------------- a dirty sibling is not a stale one --
+
+
+def _derive_over_a_dirty_sibling():
+    """Build a throwaway sibling with an uncommitted edit and derive."""
+    import subprocess
+    import tempfile
+
+    from architecture.derive_register import derive
+
+    directory = tempfile.mkdtemp()
+    sibling = pathlib.Path(directory) / "sibling"
+    sibling.mkdir()
+    for command in (["init", "-q", "-b", "main"],
+                    ["config", "user.email", "t@example.invalid"],
+                    ["config", "user.name", "t"]):
+        subprocess.run(["git", "-C", str(sibling), *command], check=True,
+                       capture_output=True)
+    (sibling / "architecture").mkdir()
+    (sibling / "architecture" / "apparatus.yaml").write_text("name: sibling\n")
+    subprocess.run(["git", "-C", str(sibling), "add", "-A"], check=True,
+                   capture_output=True)
+    subprocess.run(["git", "-C", str(sibling), "commit", "-qm", "one"],
+                   check=True, capture_output=True)
+    (sibling / "architecture" / "apparatus.yaml").write_text("name: edited\n")
+    return derive([("STE", REPO), ("SIB", sibling)], check_remotes=True)
+
+
+def test_a_dirty_sibling_clone_is_refused_and_names_the_files():
+    """THE HALF THE CURRENCY CHECK WAS MISSING, and the sharper half.
+
+    `_sibling_currency` asks whether a clone's HEAD has fallen behind
+    its remote. It never asked whether the WORKING TREE matches that
+    HEAD. A stale clone names an older commit honestly -- a reader can
+    go and look it up. A DIRTY clone names a commit that never contained
+    what was read, which is a citation to a source that does not say
+    what it is quoted as saying.
+
+    FOUND BY CAUSING IT: a patch applied to a sibling's working tree and
+    left uncommitted put four register fixed-points out, and the deriver
+    had nothing to say about why.
+    """
+    import subprocess
+    import tempfile
+
+    from architecture.derive_register import DerivationError, derive
+
+    with tempfile.TemporaryDirectory() as directory:
+        sibling = pathlib.Path(directory) / "sibling"
+        sibling.mkdir()
+        for command in (["init", "-q", "-b", "main"],
+                        ["config", "user.email", "t@example.invalid"],
+                        ["config", "user.name", "t"]):
+            subprocess.run(["git", "-C", str(sibling), *command], check=True,
+                           capture_output=True)
+        (sibling / "architecture").mkdir()
+        (sibling / "architecture" / "apparatus.yaml").write_text("name: sibling\n")
+        subprocess.run(["git", "-C", str(sibling), "add", "-A"], check=True,
+                       capture_output=True)
+        subprocess.run(["git", "-C", str(sibling), "commit", "-qm", "one"],
+                       check=True, capture_output=True)
+
+        # CLEAN: the dirtiness check must not fire. Currency is not asked
+        # (no remote), so reaching any later refusal proves this one passed.
+        from architecture.derive_register import _uncommitted
+        assert _uncommitted(sibling) == ()
+
+        # DIRTY: it must fire, and name the file
+        (sibling / "architecture" / "apparatus.yaml").write_text("name: edited\n")
+        changed = _uncommitted(sibling)
+        assert changed == ("architecture/apparatus.yaml",), changed
+
+        with pytest.raises(DerivationError) as caught:
+            derive([("STE", REPO), ("SIB", sibling)], check_remotes=True)
+        message = str(caught.value)
+        assert "differ from its own HEAD" in message
+        assert "apparatus.yaml" in message
+        assert "worse than recording a stale one" in message
+
+
+def test_the_dirtiness_refusal_is_distinct_from_the_staleness_one():
+    """Two different failures with two different remedies. A message
+    that conflated them would send a reader to fetch when the fix is to
+    commit.
+
+    Driven at RUNTIME rather than grepped from the source. The first
+    version of this check read `derive_register.py` looking for the
+    sentence, and failed -- because the sentence is split across two
+    source lines by the formatter. A source grep tests spelling; only
+    running the thing tests what it says."""
+    from architecture.derive_register import DerivationError
+
+    with pytest.raises(DerivationError) as dirty:
+        _derive_over_a_dirty_sibling()
+    message = str(dirty.value)
+
+    assert "differ from its own HEAD" in message
+    assert "Commit or revert the sibling" in message
+    # and it must NOT send the reader to fetch, which fixes the other one
+    assert "fetch first" not in message

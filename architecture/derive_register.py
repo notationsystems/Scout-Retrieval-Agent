@@ -443,6 +443,33 @@ def _remote_head(path: pathlib.Path, branch: str) -> Optional[str]:
     return result.stdout.strip().split("\t")[0]
 
 
+def _uncommitted(path: pathlib.Path) -> Tuple[str, ...]:
+    """Files in a clone that differ from its own HEAD.
+
+    THE HALF THE CURRENCY CHECK WAS MISSING, and it is the sharper half.
+    `_sibling_currency` asks whether a clone's HEAD has fallen behind its
+    remote. It never asked whether the WORKING TREE matches that HEAD.
+
+    A stale clone at least names an older commit honestly -- the register
+    records a real commit, and a reader can go and look at it. A DIRTY
+    clone names a commit that never contained what was read: the
+    derivation reports `SCL @ 5e62820` while having read a file that is
+    at no commit at all. That is not staleness; it is a citation to a
+    source that does not say what it is quoted as saying.
+
+    FOUND BY CAUSING IT. A patch was applied to a sibling's working tree
+    and left uncommitted; the registers went out of fixed point and the
+    deriver had nothing to say about why. Recorded here rather than in a
+    comment somewhere, because the next person to apply a patch to a
+    sibling will not read the comment.
+    """
+    result = _git(path, "status", "--porcelain")
+    if result.returncode != 0:
+        return ()
+    return tuple(sorted(
+        line[3:].strip() for line in result.stdout.splitlines() if line.strip()))
+
+
 def _sibling_currency(path: pathlib.Path, local: str, remote: str) -> Optional[str]:
     """How a SIBLING's clone stands against its remote, or None if behind.
 
@@ -515,6 +542,20 @@ def _build_binding(label, root, files, provenance, is_deriving, check_remote):
         if check_remote:
             remote_commit = _remote_head(root, branch)
     elif check_remote:
+        # LOCAL FACTS BEFORE NETWORK ONES. Dirtiness is cheap, certain
+        # and independent of whether any remote answers, and a dirty
+        # clone is a problem either way -- so asking the network first
+        # would report "cannot reach origin" about a tree whose real
+        # defect is sitting on disk.
+        dirty = _uncommitted(root)
+        if dirty:
+            raise DerivationError(
+                f"{label}: {len(dirty)} file(s) differ from its own HEAD "
+                f"{local_commit[:12]} -- {list(dirty[:5])}. A derivation over a "
+                f"DIRTY clone would record a commit that never contained what "
+                f"it read, which is worse than recording a stale one: a stale "
+                f"commit can at least be looked up. Commit or revert the "
+                f"sibling, then derive.")
         remote_commit = _remote_head(root, branch)
         if remote_commit is None:
             raise DerivationError(
