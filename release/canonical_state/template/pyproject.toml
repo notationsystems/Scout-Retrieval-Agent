@@ -33,7 +33,11 @@ dependencies = []
 dev = ["pytest>=7"]
 
 [project.urls]
-Source = "https://github.com/notationsystems/canonical-state"
+# The repository this distribution is DERIVED FROM, which is
+# where its source actually lives and where an issue about it
+# can be acted on. A URL naming a repository that does not
+# exist is metadata that 404s on a first release.
+Source = "https://github.com/atomtrapping/Scientific-Transformer-Engine"
 
 # EVERY package, SUBPACKAGES INCLUDED, and listed rather than found.
 # The first version of this listed only the five top-level names, and

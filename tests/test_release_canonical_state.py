@@ -480,6 +480,61 @@ def test_nothing_shipped_imports_a_numeric_module(emitted):
                 f"claim that this ships no mathematics is no longer true")
 
 
+def test_the_distribution_ships_ci_that_exercises_what_it_claims(emitted):
+    """A zero-dependency library that supports four interpreters and
+    three platforms has made a claim nothing here can check, because
+    this repository runs on one of each. CI is where that claim is
+    tested rather than asserted, so it has to actually ship."""
+    dest, _ = emitted
+    workflow = dest / ".github" / "workflows" / "ci.yml"
+    assert workflow.exists(), "the distribution ships no CI"
+    text = workflow.read_text()
+    for version in ("3.10", "3.11", "3.12", "3.13"):
+        assert version in text, f"CI does not exercise Python {version}"
+    for platform in ("ubuntu-latest", "macos-latest", "windows-latest"):
+        assert platform in text, f"CI does not exercise {platform}"
+
+
+def test_the_shipped_ci_checks_the_installed_artefact_not_just_the_checkout(emitted):
+    """THE JOB THAT EXISTS BECAUSE OF THIS RELEASE'S TWO DEFECTS.
+
+    A suite run in a checkout has the source on its path, so it can
+    never see a packaging failure. Both defects here were invisible to
+    it: a declaration that omitted every subpackage, and a wheel that
+    carried no `renderer/` while the NOTICE said the notice shipped with
+    it. The second CI job builds the wheel and looks inside."""
+    dest, _ = emitted
+    text = (dest / ".github" / "workflows" / "ci.yml").read_text()
+    assert "--target /tmp/installed" in text or "--target" in text, (
+        "CI never installs the wheel anywhere, so it only ever tests the "
+        "checkout")
+    assert "renderer" in text, (
+        "CI does not check that the renderer survives packaging, which is "
+        "the thing that failed")
+    assert "THIRD_PARTY_NOTICES" in text, (
+        "CI does not check that the file the NOTICE points at is installed")
+
+
+def test_the_source_url_names_a_repository_that_exists():
+    """Metadata is read by strangers. A `Source` pointing at a repository
+    nobody created 404s on the first release, and both distributions are
+    derived from one repository rather than living in their own, so both
+    name it."""
+    urls = set()
+    for name in ("canonical_state", "provenance_pool"):
+        toml = (ROOT / "release" / name / "template" / "pyproject.toml").read_text()
+        found = re.findall(r'^Source = "([^"]+)"', toml, re.MULTILINE)
+        assert len(found) == 1, f"{name} declares {len(found)} Source URLs"
+        urls.add(found[0])
+    assert len(urls) == 1, (
+        f"the two distributions are derived from one repository but name "
+        f"different ones: {urls}")
+    url = urls.pop()
+    assert "notationsystems/canonical-state" not in url
+    assert "notationsystems/provenance-pool" not in url
+    assert url.startswith("https://github.com/")
+
+
 def test_the_licence_is_the_verbatim_apache_text():
     import hashlib
     text = (ROOT / "release" / "canonical_state" / "template" / "LICENSE").read_bytes()

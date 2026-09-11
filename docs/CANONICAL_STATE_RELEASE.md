@@ -140,6 +140,23 @@ now checks the version and the filename.
 
 ## Locks
 
-`tests/test_release_canonical_state.py` -- 35 locks, every refusal driven
+`tests/test_release_canonical_state.py` -- 38 locks, every refusal driven
 over **both** answers. `scripts/mutate_canonical_state_release_checks.py`
--- 29/29 mutants killed by their named test.
+-- 33/33 mutants killed by their named test.
+
+## CI, and the thing it exists to check
+
+The distribution ships `.github/workflows/ci.yml` with two jobs. The
+first runs the suite across Python 3.10-3.13 on Linux, macOS and
+Windows, because "zero dependencies, four interpreters, three platforms"
+is a claim and this repository runs on one of each.
+
+The second is the one that matters here: it **builds the wheel and
+installs it somewhere else**, then imports from the installed copy and
+checks the renderer's importmap resolves. Both defects above were
+invisible to a suite run in a checkout, because a checkout has the
+source on its path. This repository's own `.github/workflows/releases.yml`
+does the same for both distributions, and runs the mutation batteries --
+it deliberately does not run the full engine suite, which needs a zkVM
+prover and the better part of an hour, so a green badge there should not
+be read as more than it is.

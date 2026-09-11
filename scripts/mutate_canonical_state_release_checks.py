@@ -21,6 +21,7 @@ BUILD = REPO / "release" / "canonical_state" / "build.py"
 PYPROJECT = REPO / "release" / "canonical_state" / "template" / "pyproject.toml"
 README = REPO / "release" / "canonical_state" / "template" / "README.md"
 NOTICE = REPO / "release" / "canonical_state" / "template" / "NOTICE"
+CI = REPO / "release" / "canonical_state" / "template" / ".github" / "workflows" / "ci.yml"
 SUITE = "tests/test_release_canonical_state.py"
 
 MUTATIONS = [
@@ -153,6 +154,20 @@ MUTATIONS = [
     ("the notice stops naming the vendored file", NOTICE,
      lambda s: s.replace("three.module.js", "a file"),
      "test_the_notice_names_the_vendored_third_party_code"),
+    ("the shipped CI stops exercising an interpreter it claims", CI,
+     lambda s: s.replace('"3.10", "3.11", "3.12", "3.13"', '"3.11"'),
+     "test_the_distribution_ships_ci_that_exercises_what_it_claims"),
+    ("the shipped CI stops exercising Windows", CI,
+     lambda s: s.replace("macos-latest, windows-latest", "macos-latest"),
+     "test_the_distribution_ships_ci_that_exercises_what_it_claims"),
+    ("CI stops checking the renderer survived packaging", CI,
+     lambda s: s.replace("THIRD_PARTY_NOTICES.md", "LICENSE_PLACEHOLDER"),
+     "test_the_shipped_ci_checks_the_installed_artefact_not_just_the_checkout"),
+    ("the Source URL goes back to a repository nobody created", PYPROJECT,
+     lambda s: s.replace(
+         'Source = "https://github.com/atomtrapping/Scientific-Transformer-Engine"',
+         'Source = "https://github.com/notationsystems/canonical-state"'),
+     "test_the_source_url_names_a_repository_that_exists"),
     ("a README example imports something the wheel does not ship", README,
      lambda s: s.replace("from core.canonical.schema import",
                          "from evidence.pool import EvidencePool\n"
