@@ -84,6 +84,36 @@ MUTATIONS = [
                          "    return []  # MUTANT"),
      "test_packaging_that_names_a_package_not_in_the_tree_is_refused"),
 
+    # --- the asset-packaging refusal ---
+    ("an asset directory may be dropped from the wheel", BUILD,
+     lambda s: s.replace("    if offenders:\n        raise ReleaseRefusal(\n"
+                         '            "the packaging does not carry files the distribution ships',
+                         "    if False:  # MUTANT\n        raise ReleaseRefusal(\n"
+                         '            "the packaging does not carry files the distribution ships'),
+     "test_an_asset_directory_the_packaging_drops_is_refused"),
+    ("an undeclared asset directory passes as declared", BUILD,
+     lambda s: s.replace("        if directory not in declared:",
+                         "        if False:  # MUTANT"),
+     "test_an_asset_directory_the_packaging_drops_is_refused"),
+    ("a declared directory with no patterns is accepted", BUILD,
+     lambda s: s.replace("        if not patterns:", "        if False:  # MUTANT"),
+     "test_an_asset_directory_with_no_patterns_at_all_is_refused"),
+    ("every file counts as covered whatever the patterns say", BUILD,
+     lambda s: s.replace("            if not any(fnmatch.fnmatch(str(relative), pattern)",
+                         "            if False and any(fnmatch.fnmatch(str(relative), pattern)  # MUTANT"),
+     "test_an_asset_file_no_pattern_covers_is_refused"),
+    ("the package-data table is read as empty", BUILD,
+     lambda s: s.replace("    if not block:\n        return {}",
+                         "    if True:  # MUTANT\n        return {}"),
+     "test_an_asset_directory_with_no_patterns_at_all_is_refused"),
+    ("the packaging shim is not emitted", PYPROJECT,
+     lambda s: s.replace('    "renderer",\n', ""),
+     "test_an_asset_directory_the_packaging_drops_is_refused"),
+    ("the notice names a file the packaging does not carry", PYPROJECT,
+     lambda s: s.replace('renderer = ["*.html", "*.json", "vendor/*.js", "vendor/*.md"]',
+                         'renderer = ["*.html", "*.json"]'),
+     "test_every_asset_the_notice_names_is_one_the_packaging_carries"),
+
     # --- selection and support ---
     ("the sibling-helper allowance is granted without checking", BUILD,
      lambda s: s.replace("            if wanted and wanted <= helper_names:",

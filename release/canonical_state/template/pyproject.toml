@@ -52,7 +52,16 @@ packages = [
     "backends.neural", "backends.simulation", "backends.threejs",
     "runtime",
     "adapters",
+    # not importable Python -- a browser view. Declared anyway, because a
+    # directory that is not a package is dropped from the wheel entirely.
+    "renderer",
 ]
+
+# The assets `renderer` exists to carry. Without these the directory
+# installs as a bare __init__.py and the NOTICE names a third-party file
+# that is not there.
+[tool.setuptools.package-data]
+renderer = ["*.html", "*.json", "vendor/*.js", "vendor/*.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

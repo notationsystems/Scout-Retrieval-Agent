@@ -54,7 +54,7 @@ other candidate. Both claims are locked:
 What it is instead: domain-neutral infrastructure for state. One
 canonical versioned truth, every view a projection with no write path.
 
-## The two defects the deriver found
+## The three defects the deriver found
 
 **A packaging list that installed nothing.** The first `pyproject.toml`
 declared the five top-level package names. `pip install .` then produced
@@ -80,6 +80,29 @@ runtime dependency on a CDN. Stripping `vendor/` to save 1.3 MB would
 emit a page that fails on open -- the import check's defect in another
 language, invisible to any amount of parsing Python.
 `_check_assets_resolve` reads the other language for the same reason.
+
+**A wheel that carried none of it.** `renderer/` was in the emitted
+tree, complete, and the asset check above confirmed the page's importmap
+resolved against it. `pip wheel .` then produced 47 entries with **not
+one under `renderer/`** -- a wheel installs packages, and a plain
+directory is dropped. Meanwhile the NOTICE that *did* install said the
+three.js notice "ships with it". It did not, which makes it a false
+statement about a third party's licence rather than a missing feature.
+
+Every other check here missed it, including the one written for exactly
+this shape: `_check_packaging_covers_the_tree` compares declared
+packages against actual packages, so it examined only the half of the
+tree made of Python. **A check built for "the packaging omits part of
+the tree" that looked at one kind of part.** Found by building the wheel
+and listing it, not by reading the tree.
+
+The fix is a `renderer/__init__.py` that exists **only in the release** --
+it lives in `template/` beside the licence, because making the directory
+a package is a packaging concern and nothing in the source tree needs
+it -- plus `package-data` patterns, plus
+`_check_assets_are_packaged`, which refuses a declaration that stops
+covering any asset file, and a lock asserting that every file the NOTICE
+names is one the packaging carries.
 
 ## A silent loss in the selection rule
 
@@ -117,6 +140,6 @@ now checks the version and the filename.
 
 ## Locks
 
-`tests/test_release_canonical_state.py` -- 30 locks, every refusal driven
+`tests/test_release_canonical_state.py` -- 35 locks, every refusal driven
 over **both** answers. `scripts/mutate_canonical_state_release_checks.py`
--- 22/22 mutants killed by their named test.
+-- 29/29 mutants killed by their named test.

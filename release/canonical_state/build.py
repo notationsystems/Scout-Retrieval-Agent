@@ -54,6 +54,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import fnmatch
 import os
 import pathlib
 import re
@@ -320,7 +321,7 @@ def _declared_packages(dest: pathlib.Path) -> List[str]:
 def _actual_packages(dest: pathlib.Path) -> List[str]:
     """Every importable package in the emitted tree, subpackages included."""
     found: List[str] = []
-    for package in PACKAGES:
+    for package in PACKAGES + ASSET_DIRS:
         base = dest / package
         for directory in sorted(base.rglob("")):
             if not directory.is_dir() or "__pycache__" in directory.parts:
@@ -373,6 +374,74 @@ def _check_packaging_covers_the_tree(dest: pathlib.Path) -> None:
             + "\nThe derived suite cannot see this: it runs inside the "
               "emitted directory, so it imports the source tree rather than "
               "an installed copy.")
+
+
+def _package_data_globs(dest: pathlib.Path) -> Dict[str, List[str]]:
+    """The [tool.setuptools.package-data] table, read without a TOML parser."""
+    text = (dest / "pyproject.toml").read_text(errors="replace")
+    block = re.search(r"\[tool\.setuptools\.package-data\]\s*\n(.*?)(?=\n\[|\Z)",
+                      text, re.DOTALL)
+    if not block:
+        return {}
+    table: Dict[str, List[str]] = {}
+    for line in block.group(1).splitlines():
+        entry = re.match(r"\s*([\w.]+)\s*=\s*\[(.*?)\]", line)
+        if entry:
+            table[entry.group(1)] = re.findall(r'"([^"]+)"', entry.group(2))
+    return table
+
+
+def _check_assets_are_packaged(dest: pathlib.Path) -> None:
+    """Every asset file must be carried by the packaging, not just present.
+
+    THE DEFECT THIS EXISTS FOR, AND WHY THE EXISTING CHECKS ALL MISSED IT.
+    `renderer/` was in the emitted tree, complete and self-consistent, and
+    `_check_assets_resolve` confirmed the page's importmap resolved. Then
+    `pip wheel .` produced 41 entries with NOT ONE under `renderer/`,
+    because a wheel installs packages and a plain directory is dropped.
+    The NOTICE that did install said the three.js notice "ships with it".
+    It did not, which makes it a false statement about a third party's
+    licence rather than a missing feature.
+
+    `_check_packaging_covers_the_tree` could not see this: it compares
+    DECLARED PACKAGES against ACTUAL PACKAGES, so it only ever examined
+    the half of the tree made of Python. A check built for "the packaging
+    omits part of the tree" that looks at one kind of part.
+    """
+    declared = set(_declared_packages(dest))
+    globs = _package_data_globs(dest)
+    offenders: List[str] = []
+    for directory in ASSET_DIRS:
+        base = dest / directory
+        if not base.is_dir():
+            continue
+        if directory not in declared:
+            offenders.append(
+                f"{directory!r} is not in [tool.setuptools] packages, so a "
+                f"wheel drops it entirely")
+            continue
+        patterns = globs.get(directory, [])
+        if not patterns:
+            offenders.append(
+                f"{directory!r} is declared but has no package-data patterns, "
+                f"so it installs as a bare __init__.py")
+            continue
+        for path in sorted(base.rglob("*")):
+            if not path.is_file() or path.suffix == ".py":
+                continue
+            relative = path.relative_to(base)
+            if not any(fnmatch.fnmatch(str(relative), pattern)
+                       for pattern in patterns):
+                offenders.append(
+                    f"{directory}/{relative} matches no package-data pattern "
+                    f"{patterns}, so it would not be installed")
+    if offenders:
+        raise ReleaseRefusal(
+            "the packaging does not carry files the distribution ships:\n  "
+            + "\n  ".join(offenders)
+            + "\nThe emitted tree is not the installed one. A file present "
+              "here and absent from the wheel is exactly the gap the NOTICE "
+              "and the README describe as shipping.")
 
 
 def _purge_bytecode(dest: pathlib.Path) -> None:
@@ -447,6 +516,7 @@ def derive(dest: pathlib.Path, root: pathlib.Path = REPO_ROOT) -> Dict[str, obje
     _check_no_machine_paths(dest)
     _check_assets_resolve(dest)
     _check_packaging_covers_the_tree(dest)
+    _check_assets_are_packaged(dest)
     summary = _run_tests(dest)
     shutil.rmtree(dest / ".pytest_cache", ignore_errors=True)
     _purge_bytecode(dest)

@@ -20,8 +20,10 @@ and both are recorded in the code they lock:
 
 from __future__ import annotations
 
+import fnmatch
 import importlib.util
 import pathlib
+import re
 import shutil
 import sys
 import tempfile
@@ -235,6 +237,91 @@ def test_packaging_that_names_a_package_not_in_the_tree_is_refused(emitted):
             '    "adapters",', '    "adapters", "nosuchpackage",'))
         with pytest.raises(release.ReleaseRefusal, match="NOT in the tree"):
             release._check_packaging_covers_the_tree(dirty)
+
+
+def test_an_asset_directory_the_packaging_drops_is_refused(emitted):
+    """THE DEFECT EVERY OTHER CHECK HERE MISSED.
+
+    `renderer/` was in the emitted tree, complete, and
+    `_check_assets_resolve` confirmed the page's importmap resolved
+    against it. `pip wheel .` then produced 47 entries with none under
+    `renderer/`, because a wheel installs packages and a plain directory
+    is dropped -- while the NOTICE that did install stated the three.js
+    notice "ships with it".
+
+    `_check_packaging_covers_the_tree` could not see it: it compares
+    declared packages against actual packages, so it examined only the
+    half of the tree made of Python. A check written for "the packaging
+    omits part of the tree" that looked at one kind of part.
+    """
+    dest, _ = emitted
+    release._check_assets_are_packaged(dest)     # the accepting branch
+
+    with tempfile.TemporaryDirectory() as directory:
+        dirty = pathlib.Path(directory) / "dist"
+        shutil.copytree(dest, dirty)
+        toml = dirty / "pyproject.toml"
+        toml.write_text(toml.read_text().replace('    "renderer",\n', ""))
+        with pytest.raises(release.ReleaseRefusal, match="wheel drops it"):
+            release._check_assets_are_packaged(dirty)
+
+
+def test_an_asset_file_no_pattern_covers_is_refused(emitted):
+    """Declared but uncovered installs as a bare `__init__.py`, which is
+    the same outcome by a different route."""
+    dest, _ = emitted
+    with tempfile.TemporaryDirectory() as directory:
+        dirty = pathlib.Path(directory) / "dist"
+        shutil.copytree(dest, dirty)
+        toml = dirty / "pyproject.toml"
+        toml.write_text(toml.read_text().replace(
+            'renderer = ["*.html", "*.json", "vendor/*.js", "vendor/*.md"]',
+            'renderer = ["*.html", "*.json"]'))
+        with pytest.raises(release.ReleaseRefusal, match="no package-data pattern"):
+            release._check_assets_are_packaged(dirty)
+
+
+def test_an_asset_directory_with_no_patterns_at_all_is_refused(emitted):
+    dest, _ = emitted
+    with tempfile.TemporaryDirectory() as directory:
+        dirty = pathlib.Path(directory) / "dist"
+        shutil.copytree(dest, dirty)
+        toml = dirty / "pyproject.toml"
+        text = toml.read_text()
+        start = text.index("[tool.setuptools.package-data]")
+        end = text.index("[tool.pytest.ini_options]")
+        toml.write_text(text[:start] + text[end:])
+        with pytest.raises(release.ReleaseRefusal, match="no package-data patterns"):
+            release._check_assets_are_packaged(dirty)
+
+
+def test_the_packaging_shim_exists_only_in_the_release(emitted):
+    """`renderer/__init__.py` is there so packaging carries the
+    directory. It is a release concern, so it lives in the template
+    beside the licence -- not in the source tree, where nothing needs
+    it."""
+    dest, _ = emitted
+    assert (dest / "renderer" / "__init__.py").exists()
+    assert not (ROOT / "renderer" / "__init__.py").exists(), (
+        "the shim leaked into the source tree, where it makes `renderer` "
+        "look like an importable package it is not")
+
+
+def test_every_asset_the_notice_names_is_one_the_packaging_carries(emitted):
+    """The NOTICE makes a licensing claim about specific files. A claim
+    about a file the wheel does not contain is a false statement about
+    somebody else's licence, not a missing feature."""
+    dest, _ = emitted
+    notice = (dest / "NOTICE").read_text()
+    named = re.findall(r"renderer/[\w./-]+", notice)
+    assert named, "the notice names no file, so this check verifies nothing"
+    globs = release._package_data_globs(dest)["renderer"]
+    for reference in named:
+        relative = reference.split("renderer/", 1)[1]
+        assert (dest / reference).exists(), f"{reference} is not in the tree"
+        assert any(fnmatch.fnmatch(relative, pattern) for pattern in globs), (
+            f"the notice names {reference}, which no package-data pattern "
+            f"carries, so it would not be installed")
 
 
 def test_the_packaging_list_covers_every_subpackage_that_exists(emitted):
