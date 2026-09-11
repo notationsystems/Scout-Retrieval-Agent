@@ -73,8 +73,15 @@ def _locks(name: str) -> int:
     return len(re.findall(r"^def test_", source, re.MULTILINE))
 
 
-def _release_facts() -> dict:
-    release = _load(ROOT / "release" / "provenance_pool" / "build.py")
+def _facts_for(deriver: str) -> dict:
+    """Measure one release's surface from its own deriver.
+
+    Parameterised by deriver rather than duplicated per release: a second
+    copy of this function would be a mirror of the first, and the moment
+    one release's rule changed the other's numbers would be checked
+    against the wrong one.
+    """
+    release = _load(ROOT / "release" / deriver / "build.py")
     modules = lines = 0
     for package in release.PACKAGES:
         for path in release._python_files(ROOT / package):
@@ -85,6 +92,14 @@ def _release_facts() -> dict:
         "lines": lines,
         "test_files": len(release.selected_tests(ROOT)),
     }
+
+
+def _release_facts() -> dict:
+    return _facts_for("provenance_pool")
+
+
+def _canonical_state_facts() -> dict:
+    return _facts_for("canonical_state")
 
 
 def _reduction_rate(which: str) -> int:
@@ -141,6 +156,21 @@ CLAIMS = [
     ("docs/OPEN_SOURCE_RELEASE.md",
      r"mutate_release_checks\.py` — (\d+)/\d+ mutants",
      lambda: _declared_mutants("mutate_release_checks")),
+    ("docs/CANONICAL_STATE_RELEASE.md",
+     r"\*\*(\d+) modules,",
+     lambda: _canonical_state_facts()["modules"]),
+    ("docs/CANONICAL_STATE_RELEASE.md",
+     r"modules, ([\d,]+) lines,",
+     lambda: _canonical_state_facts()["lines"]),
+    ("docs/CANONICAL_STATE_RELEASE.md",
+     r"lines, (\d+) test files,",
+     lambda: _canonical_state_facts()["test_files"]),
+    ("docs/CANONICAL_STATE_RELEASE.md",
+     r"`tests/test_release_canonical_state\.py` -- (\d+) locks",
+     lambda: _locks("test_release_canonical_state")),
+    ("docs/CANONICAL_STATE_RELEASE.md",
+     r"mutate_canonical_state_release_checks\.py`\s*\n?-- (\d+)/\d+ mutants",
+     lambda: _declared_mutants("mutate_canonical_state_release_checks")),
     ("docs/ENGINE_SEAM.md",
      r"mutate_seam_conformance_checks\.py` — (\d+)/\d+ mutants",
      lambda: _declared_mutants("mutate_seam_conformance_checks")),

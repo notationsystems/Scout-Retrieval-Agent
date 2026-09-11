@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "canonical-state"
+version = "0.1.0"
+description = "One immutable versioned state, and every view of it a derived projection that can never write back."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "Notation Systems Inc." }]
+keywords = [
+    "state-management", "versioning", "immutable", "provenance",
+    "determinism", "projection", "compiler", "content-addressing",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Libraries",
+    "Typing :: Typed",
+]
+
+# DELIBERATELY EMPTY, and a feature rather than an omission. The whole
+# library is standard library only, so it installs anywhere a supported
+# Python runs and can never break because a transitive pin moved.
+# Adding a dependency here is a decision to give that up.
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.urls]
+Source = "https://github.com/notationsystems/canonical-state"
+
+# EVERY package, SUBPACKAGES INCLUDED, and listed rather than found.
+# The first version of this listed only the five top-level names, and
+# `pip install .` then produced a distribution whose `core/` and
+# `backends/` contained nothing but `__init__.py` -- every real module
+# missing, and importable only by whoever still had the source tree.
+# The derived suite did not catch it because it runs inside the emitted
+# directory, so `.` is on the path and it imports the source, never the
+# installed copy. `build.py` now compares this list against the tree it
+# emitted and refuses on any difference.
+[tool.setuptools]
+packages = [
+    "core", "core.canonical", "core.projection",
+    "morpho",
+    "backends", "backends.diagram", "backends.graph",
+    "backends.neural", "backends.simulation", "backends.threejs",
+    "runtime",
+    "adapters",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

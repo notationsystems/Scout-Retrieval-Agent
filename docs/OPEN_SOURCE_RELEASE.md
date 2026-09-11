@@ -1,7 +1,33 @@
-# The open-source release: `provenance-pool`
+# The open-source releases
 
-Part of this repository ships publicly under Apache-2.0. This says what,
-why it is derived rather than copied, and what it refuses.
+This repository publishes **two** distributions under Apache-2.0, and
+they are two because the repository contains two programs. Measured
+across every file in both, the twin compiler (`core`, `morpho`,
+`backends`, `runtime`, `adapters`, `renderer`) and the evidence platform
+(`evidence`, `scout`, ...) have **zero imports in either direction**, and
+no production code outside the twin compiler imports it at all -- not
+here, and not in either sibling repository (DAQ: 0, SCL: 0, against 335
+imports of the evidence platform). One name over two programs would be
+one distribution claiming to be two things.
+
+| distribution | what it is | deriver |
+|---|---|---|
+| `provenance-pool` | the evidence model: an append-only pool with a strict admission gate | `release/provenance_pool/build.py` |
+| `canonical-state` | the state model: one immutable versioned truth, every view a projection that cannot write back | `release/canonical_state/build.py` |
+
+`canonical-state` is deliberately **not** presented as a scientific or
+numerical tool, because measurement says it is not one: the shipped
+packages import no numeric module at all, and `backends/simulation` and
+`backends/neural` say in their own docstrings that they are interface
+shapes only. See `docs/CANONICAL_STATE_RELEASE.md` for that release's
+own account, including the two defects its deriver found.
+
+---
+
+# `provenance-pool`
+
+This says what ships, why it is derived rather than copied, and what it
+refuses.
 
 ```bash
 python3 release/provenance_pool/build.py --check      # verify
