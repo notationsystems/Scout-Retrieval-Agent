@@ -89,6 +89,57 @@ jobs:
               importlib.import_module(module)
           print("every named module imports from the installed copy")
 
+  sdist:
+    # THE ARTEFACT PyPI SERVES TO `pip install --no-binary` AND TO EVERY
+    # DISTRIBUTION PACKAGER, and the one nothing else here builds.
+    #
+    # Two defects lived in it. setuptools' default sdist rules carry
+    # `tests/test_*.py` and not the conftest beside them, so the released
+    # sdist's own suite failed at collection -- on the command the README
+    # gives contributors. And `requires = ["setuptools>=68"]` was false:
+    # PEP 639 metadata needs 77, measured (76.1.0 rejects, 77.0.1
+    # builds). That one hid because `pip wheel` builds in an ISOLATED
+    # environment where ">=68" resolves to the newest setuptools there
+    # is, so the declaration was never what got tested.
+    #
+    # Hence --no-build-isolation against the DECLARED minimum: the
+    # version in pyproject.toml is the one that has to work.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install --upgrade pip pytest "setuptools==77.0.1" "packaging>=24.2" wheel
+      - name: Emit both distributions
+        run: |
+          python3 release/provenance_pool/build.py --out /tmp/provenance-pool
+          python3 release/canonical_state/build.py --out /tmp/canonical-state
+      - name: Build sdists at the declared minimum, without isolation
+        shell: python
+        run: |
+          import os, pathlib, subprocess, sys
+          for tree in ("/tmp/provenance-pool", "/tmp/canonical-state"):
+              out = pathlib.Path(tree) / "sdist"
+              out.mkdir(exist_ok=True)
+              subprocess.run(
+                  [sys.executable, "-c",
+                   "import setuptools.build_meta as b, sys; "
+                   "print(b.build_sdist(sys.argv[1]))", str(out)],
+                  cwd=tree, check=True)
+      - name: Each sdist's own suite must pass inside the unpacked sdist
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tree in /tmp/provenance-pool /tmp/canonical-state; do
+            work=$(mktemp -d)
+            tar xzf "$tree"/sdist/*.tar.gz -C "$work"
+            cd "$work"/*/
+            echo "--- $(basename $tree) ---"
+            python -m pytest tests/ -q
+            cd - >/dev/null
+          done
+
   locks:
     # The locks on the derivers, and the mutants that show each refusal
     # can actually fire. A refusal only ever observed refusing has not

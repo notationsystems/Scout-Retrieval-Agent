@@ -54,7 +54,7 @@ other candidate. Both claims are locked:
 What it is instead: domain-neutral infrastructure for state. One
 canonical versioned truth, every view a projection with no write path.
 
-## The three defects the deriver found
+## The five defects the deriver found
 
 **A packaging list that installed nothing.** The first `pyproject.toml`
 declared the five top-level package names. `pip install .` then produced
@@ -104,6 +104,38 @@ it -- plus `package-data` patterns, plus
 covering any asset file, and a lock asserting that every file the NOTICE
 names is one the packaging carries.
 
+**An sdist whose own suite could not collect.** setuptools' default
+sdist rules carry `tests/test_*.py` and **not** the support beside them.
+So the released sdist held all thirteen test modules and none of
+`conftest.py`, `fixtures_time_series.py` or `__init__.py`; unpacked, and
+run with the command the README gives contributors, it failed at
+**collection**. That is the artefact PyPI serves to `pip install
+--no-binary` and to every distribution packager.
+
+Invisible from every direction already checked: the wheel is correct and
+deliberately ships no tests, the emitted tree is correct, and
+`provenance-pool`'s sdist is correct -- but only because it has no test
+support files for the defaults to miss. Accident, not agreement, so that
+release now declares a `MANIFEST.in` too rather than continuing to be
+right by luck.
+
+**A build requirement that understated itself by nine versions.** Both
+distributions declared `requires = ["setuptools>=68"]` while using PEP
+639 metadata -- `license = "Apache-2.0"` as an SPDX expression, and
+`license-files` -- which landed in setuptools 77. Measured rather than
+recalled: **76.1.0 rejects this file and 77.0.1 builds it**, and the
+in-tree setuptools here (68.1.2) rejects it outright.
+
+It survived because **`pip wheel` builds in an isolated environment**,
+where `>=68` resolves to the newest setuptools there is. The declaration
+was never the thing being tested -- the environment quietly supplied
+something better than what was claimed. That is the same shape as the
+derived suite importing the source instead of the install, and as an
+OpenBLAS build string reporting `Haswell` while dispatching AVX-512: a
+check passing because something other than the declared thing was
+answering. CI now builds both sdists with `--no-build-isolation` against
+the declared minimum.
+
 ## A silent loss in the selection rule
 
 The rule inherited from `provenance-pool` keeps a test when its internal
@@ -140,9 +172,9 @@ now checks the version and the filename.
 
 ## Locks
 
-`tests/test_release_canonical_state.py` -- 38 locks, every refusal driven
+`tests/test_release_canonical_state.py` -- 42 locks, every refusal driven
 over **both** answers. `scripts/mutate_canonical_state_release_checks.py`
--- 33/33 mutants killed by their named test.
+-- 40/40 mutants killed by their named test.
 
 ## CI, and the thing it exists to check
 

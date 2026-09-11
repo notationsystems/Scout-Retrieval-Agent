@@ -444,6 +444,75 @@ def _check_assets_are_packaged(dest: pathlib.Path) -> None:
               "and the README describe as shipping.")
 
 
+def _manifest_covers(dest: pathlib.Path, relative: pathlib.PurePosixPath) -> bool:
+    """Whether MANIFEST.in carries `relative` into the sdist."""
+    manifest = dest / "MANIFEST.in"
+    if not manifest.is_file():
+        return False
+    parts = relative.parts
+    for line in manifest.read_text(errors="replace").splitlines():
+        tokens = line.split()
+        if not tokens or tokens[0].startswith("#"):
+            continue
+        directive, rest = tokens[0], tokens[1:]
+        if directive == "include" and str(relative) in rest:
+            return True
+        if directive == "graft" and rest and parts[:1] == (rest[0],):
+            return True
+        if directive == "recursive-include" and len(rest) >= 2:
+            root, patterns = rest[0], rest[1:]
+            if parts[:1] == (root,) and any(
+                    fnmatch.fnmatch(parts[-1], pattern) for pattern in patterns):
+                return True
+    return False
+
+
+def _check_sdist_carries_the_suite(dest: pathlib.Path) -> None:
+    """The sdist must contain everything its own suite needs to run.
+
+    THE DEFECT, AND WHY NOTHING ELSE HERE COULD SEE IT. setuptools'
+    default sdist rules pick up `tests/test_*.py` and NOT the support
+    beside them. So the released sdist held all thirteen test modules
+    and none of `conftest.py`, `fixtures_time_series.py` or
+    `__init__.py`, and unpacking it and running `python -m pytest tests/`
+    -- the command the README gives contributors -- failed at
+    COLLECTION.
+
+    Invisible from every direction already checked. The wheel is correct
+    and ships no tests at all, by design. The emitted tree is correct.
+    And `provenance-pool`'s sdist is correct -- but only because it has
+    no test support files for the default rules to miss, which is
+    accident rather than agreement.
+
+    Checked statically against MANIFEST.in rather than by building,
+    because building an sdist needs a newer setuptools than a deriver
+    should require. CI builds it and runs the suite inside it; this is
+    the part that can fail here.
+    """
+    if not (dest / "MANIFEST.in").is_file():
+        raise ReleaseRefusal(
+            "the distribution declares no MANIFEST.in, so what reaches the "
+            "sdist is whatever setuptools guesses -- and its guess omits "
+            "test support files while keeping the tests that need them")
+    offenders: List[str] = []
+    for directory in ("tests",) + ASSET_DIRS:
+        base = dest / directory
+        if not base.is_dir():
+            continue
+        for path in sorted(base.rglob("*")):
+            if not path.is_file() or "__pycache__" in path.parts:
+                continue
+            relative = pathlib.PurePosixPath(path.relative_to(dest).as_posix())
+            if not _manifest_covers(dest, relative):
+                offenders.append(str(relative))
+    if offenders:
+        raise ReleaseRefusal(
+            "MANIFEST.in does not carry files the sdist needs:\n  "
+            + "\n  ".join(offenders)
+            + "\nAn sdist whose own suite cannot collect is what `pip "
+              "install --no-binary` and every distribution packager get.")
+
+
 def _purge_bytecode(dest: pathlib.Path) -> None:
     """Verifying the tree is what dirties it -- pytest writes bytecode
     into the emitted tree after the copy that was careful about it."""
@@ -517,6 +586,7 @@ def derive(dest: pathlib.Path, root: pathlib.Path = REPO_ROOT) -> Dict[str, obje
     _check_assets_resolve(dest)
     _check_packaging_covers_the_tree(dest)
     _check_assets_are_packaged(dest)
+    _check_sdist_carries_the_suite(dest)
     summary = _run_tests(dest)
     shutil.rmtree(dest / ".pytest_cache", ignore_errors=True)
     _purge_bytecode(dest)

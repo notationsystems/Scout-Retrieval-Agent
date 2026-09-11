@@ -535,6 +535,80 @@ def test_the_source_url_names_a_repository_that_exists():
     assert url.startswith("https://github.com/")
 
 
+def test_a_manifest_that_drops_test_support_is_refused(emitted):
+    """THE DEFECT THE SDIST HAD, AND THE ONE THE WHEEL COULD NOT SHOW.
+
+    setuptools' default sdist rules carry `tests/test_*.py` and not the
+    conftest beside them, so the released sdist held thirteen test
+    modules and none of the support they bind to. Unpacked, `pytest
+    tests/` failed at COLLECTION -- the command the README gives
+    contributors.
+
+    Nothing already checked could see it. The wheel is correct and
+    deliberately ships no tests; the emitted tree is correct; and
+    `provenance-pool`'s sdist is correct only because it has no test
+    support files for the defaults to miss."""
+    dest, _ = emitted
+    release._check_sdist_carries_the_suite(dest)      # the accepting branch
+
+    with tempfile.TemporaryDirectory() as directory:
+        dirty = pathlib.Path(directory) / "dist"
+        shutil.copytree(dest, dirty)
+        manifest = dirty / "MANIFEST.in"
+        manifest.write_text(
+            manifest.read_text().replace("recursive-include tests *.py", ""))
+        with pytest.raises(release.ReleaseRefusal, match="conftest.py"):
+            release._check_sdist_carries_the_suite(dirty)
+
+
+def test_a_missing_manifest_is_refused_rather_than_left_to_the_defaults(emitted):
+    dest, _ = emitted
+    with tempfile.TemporaryDirectory() as directory:
+        dirty = pathlib.Path(directory) / "dist"
+        shutil.copytree(dest, dirty)
+        (dirty / "MANIFEST.in").unlink()
+        with pytest.raises(release.ReleaseRefusal, match="no MANIFEST.in"):
+            release._check_sdist_carries_the_suite(dirty)
+
+
+def test_the_manifest_carries_the_renderer_into_the_sdist_too(emitted):
+    """`package-data` is a WHEEL mechanism and says nothing about the
+    sdist. Two separate declarations, two separate ways to lose the same
+    directory."""
+    dest, _ = emitted
+    assert release._manifest_covers(
+        dest, pathlib.PurePosixPath("renderer/vendor/three.module.js"))
+    assert release._manifest_covers(
+        dest, pathlib.PurePosixPath("tests/conftest.py"))
+
+    with tempfile.TemporaryDirectory() as directory:
+        dirty = pathlib.Path(directory) / "dist"
+        shutil.copytree(dest, dirty)
+        manifest = dirty / "MANIFEST.in"
+        manifest.write_text(manifest.read_text().replace("graft renderer", ""))
+        with pytest.raises(release.ReleaseRefusal, match="three.module.js"):
+            release._check_sdist_carries_the_suite(dirty)
+
+
+def test_the_build_requirement_is_the_version_that_actually_works():
+    """MEASURED, NOT REMEMBERED: 76.1.0 rejects this metadata and 77.0.1
+    builds it, because PEP 639's `license` expression and `license-files`
+    landed in setuptools 77.
+
+    The old pin said 68 and survived anyway, because `pip wheel` builds
+    in an isolated environment where ">=68" resolves to the newest
+    setuptools there is. The declaration was never the thing being
+    tested -- the same shape as a derived suite importing the source
+    tree instead of the install."""
+    for name in ("canonical_state", "provenance_pool"):
+        toml = (ROOT / "release" / name / "template" / "pyproject.toml").read_text()
+        found = re.findall(r'requires = \["setuptools>=(\d+)"\]', toml)
+        assert len(found) == 1, f"{name}: {len(found)} build requirements"
+        assert int(found[0]) >= 77, (
+            f"{name} declares setuptools>={found[0]}, which cannot build its "
+            f"own PEP 639 metadata; measured, 76 rejects it and 77 builds it")
+
+
 def test_the_licence_is_the_verbatim_apache_text():
     import hashlib
     text = (ROOT / "release" / "canonical_state" / "template" / "LICENSE").read_bytes()

@@ -22,6 +22,7 @@ PYPROJECT = REPO / "release" / "canonical_state" / "template" / "pyproject.toml"
 README = REPO / "release" / "canonical_state" / "template" / "README.md"
 NOTICE = REPO / "release" / "canonical_state" / "template" / "NOTICE"
 CI = REPO / "release" / "canonical_state" / "template" / ".github" / "workflows" / "ci.yml"
+MANIFEST = REPO / "release" / "canonical_state" / "template" / "MANIFEST.in"
 SUITE = "tests/test_release_canonical_state.py"
 
 MUTATIONS = [
@@ -168,6 +169,36 @@ MUTATIONS = [
          'Source = "https://github.com/atomtrapping/Scientific-Transformer-Engine"',
          'Source = "https://github.com/notationsystems/canonical-state"'),
      "test_the_source_url_names_a_repository_that_exists"),
+    # --- the sdist refusal ---
+    ("the sdist check stops refusing", BUILD,
+     lambda s: s.replace("    if offenders:\n        raise ReleaseRefusal(\n"
+                         '            "MANIFEST.in does not carry files the sdist needs',
+                         "    if False:  # MUTANT\n        raise ReleaseRefusal(\n"
+                         '            "MANIFEST.in does not carry files the sdist needs'),
+     "test_a_manifest_that_drops_test_support_is_refused"),
+    ("a missing manifest is tolerated", BUILD,
+     lambda s: s.replace('    if not (dest / "MANIFEST.in").is_file():',
+                         "    if False:  # MUTANT"),
+     "test_a_missing_manifest_is_refused_rather_than_left_to_the_defaults"),
+    ("every path counts as covered whatever the manifest says", BUILD,
+     lambda s: s.replace("            if not _manifest_covers(dest, relative):",
+                         "            if False:  # MUTANT"),
+     "test_a_manifest_that_drops_test_support_is_refused"),
+    ("recursive-include is read as covering nothing", BUILD,
+     lambda s: s.replace('        if directive == "recursive-include" and len(rest) >= 2:',
+                         '        if False and directive == "recursive-include":  # MUTANT'),
+     "test_a_manifest_that_drops_test_support_is_refused"),
+    ("graft is read as covering nothing", BUILD,
+     lambda s: s.replace('        if directive == "graft" and rest and parts[:1] == (rest[0],):',
+                         '        if False:  # MUTANT'),
+     "test_the_manifest_carries_the_renderer_into_the_sdist_too"),
+    ("the manifest stops carrying test support", MANIFEST,
+     lambda s: s.replace("recursive-include tests *.py", "include tests/test_delta.py"),
+     "test_a_manifest_that_drops_test_support_is_refused"),
+    ("the build requirement goes back to a version that cannot build it", PYPROJECT,
+     lambda s: s.replace('requires = ["setuptools>=77"]', 'requires = ["setuptools>=68"]'),
+     "test_the_build_requirement_is_the_version_that_actually_works"),
+
     ("a README example imports something the wheel does not ship", README,
      lambda s: s.replace("from core.canonical.schema import",
                          "from evidence.pool import EvidencePool\n"

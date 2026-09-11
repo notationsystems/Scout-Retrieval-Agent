@@ -1,5 +1,15 @@
 [build-system]
-requires = ["setuptools>=68"]
+# 77, not 68, and the nine versions between are not a detail. PEP 639
+# metadata -- `license = "Apache-2.0"` as an SPDX expression, and
+# `license-files` -- landed in setuptools 77.0.0. Measured against real
+# interpreters: 76.1.0 rejects this file, 77.0.1 builds it.
+#
+# The understated pin survived because `pip wheel` builds in an ISOLATED
+# environment, where ">=68" resolves to the newest setuptools there is.
+# The declaration was never the thing being tested. Anyone building with
+# --no-build-isolation, or with an older setuptools pinned, got a
+# configuration error instead of a package.
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
